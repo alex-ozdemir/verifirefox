@@ -2047,6 +2047,7 @@ bool BacktrackingAllocator::resolveControlFlow() {
       VirtualRegister& reg = vreg(def);
       LiveRange* to = reg.rangeFor(entryOf(successor));
       MOZ_ASSERT(to);
+      def->setOutput(to->bundle()->allocation());
 
       for (size_t k = 0; k < mSuccessor->numPredecessors(); k++) {
         LBlock* predecessor = mSuccessor->getPredecessor(k)->lir();
@@ -2056,6 +2057,7 @@ bool BacktrackingAllocator::resolveControlFlow() {
         LiveRange* from = vreg(input).rangeFor(exitOf(predecessor),
                                                /* preferRegister = */ true);
         MOZ_ASSERT(from);
+        *input = from->bundle()->allocation();
 
         if (!alloc().ensureBallast()) {
           return false;
