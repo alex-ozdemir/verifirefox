@@ -505,7 +505,6 @@ void LInstruction::assignSnapshot(LSnapshot* snapshot) {
 #endif
 }
 
-#ifdef JS_JITSPEW
 static size_t NumSuccessorsHelper(const LNode* ins) { return 0; }
 
 template <size_t Succs, size_t Operands, size_t Temps>
@@ -514,13 +513,13 @@ static size_t NumSuccessorsHelper(
   return Succs;
 }
 
-static size_t NumSuccessors(const LInstruction* ins) {
-  switch (ins->op()) {
+size_t LInstruction::numSuccessors() const {
+  switch (op()) {
     default:
       MOZ_CRASH("Unexpected LIR op");
 #  define LIROP(x)         \
     case LNode::Opcode::x: \
-      return NumSuccessorsHelper(ins->to##x());
+      return NumSuccessorsHelper(to##x());
       LIR_OPCODE_LIST(LIROP)
 #  undef LIROP
   }
@@ -536,20 +535,19 @@ static MBasicBlock* GetSuccessorHelper(
   return ins->getSuccessor(i);
 }
 
-static MBasicBlock* GetSuccessor(const LInstruction* ins, size_t i) {
-  MOZ_ASSERT(i < NumSuccessors(ins));
+MBasicBlock* LInstruction::getSuccessor(size_t index) const {
+  MOZ_ASSERT(index < numSuccessors());
 
-  switch (ins->op()) {
+  switch (op()) {
     default:
       MOZ_CRASH("Unexpected LIR op");
 #  define LIROP(x)         \
     case LNode::Opcode::x: \
-      return GetSuccessorHelper(ins->to##x(), i);
+      return GetSuccessorHelper(to##x(), index);
       LIR_OPCODE_LIST(LIROP)
 #  undef LIROP
   }
 }
-#endif
 
 #ifdef JS_JITSPEW
 void LNode::dump(GenericPrinter& out) {
@@ -583,11 +581,11 @@ void LNode::dump(GenericPrinter& out) {
       out.printf(")");
     }
 
-    size_t numSuccessors = NumSuccessors(ins);
+    size_t numSuccessors = ins->numSuccessors();
     if (numSuccessors > 0) {
       out.printf(" s=(");
       for (size_t i = 0; i < numSuccessors; i++) {
-        MBasicBlock* succ = GetSuccessor(ins, i);
+        MBasicBlock* succ = ins->getSuccessor(i);
         out.printf("block%u", succ->id());
         if (i != numSuccessors - 1) {
           out.printf(", ");

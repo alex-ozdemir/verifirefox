@@ -771,6 +771,9 @@ class LInstruction : public LNode,
   size_t numTemps() const { return numTemps_; }
   inline LDefinition* getTemp(size_t index);
 
+  size_t numSuccessors() const;
+  MBasicBlock* getSuccessor(size_t index) const;
+
   LSnapshot* snapshot() const { return snapshot_; }
   LSafepoint* safepoint() const { return safepoint_; }
   LMoveGroup* inputMoves() const { return inputMoves_; }
