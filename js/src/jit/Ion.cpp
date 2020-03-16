@@ -35,6 +35,7 @@
 #include "jit/JitCommon.h"
 #include "jit/JitRealm.h"
 #include "jit/JitSpewer.h"
+#include "jit/JSONSerializer.h"
 #include "jit/LICM.h"
 #include "jit/Linker.h"
 #include "jit/LIR.h"
@@ -71,6 +72,13 @@
 
 #if defined(ANDROID)
 #  include <sys/system_properties.h>
+#endif
+
+#ifdef XP_WIN
+#  include <process.h>
+#  define getpid _getpid
+#else
+#  include <unistd.h>
 #endif
 
 using mozilla::DebugOnly;
@@ -1530,6 +1538,32 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
 
   AllocationIntegrityState integrity(*lir);
 
+  static Mutex serializerLock(mutexid::IonSerializer);
+  static FILE* serializerFile = nullptr;
+
+  {
+    LockGuard<Mutex> guard(serializerLock);
+
+    if (!serializerFile) {
+      char buffer[256];
+      const uint32_t pid = (uint32_t) getpid();
+      snprintf(buffer, sizeof(buffer), "ion-%" PRIu32 ".json", pid);
+      serializerFile = fopen(buffer, "w");
+    }
+
+    {
+      Fprinter jsonPrinter(serializerFile);
+      {
+        JSONSerializer jsonSerializer(jsonPrinter);
+        jsonSerializer.beginPass(graph.id(), "beforeRegisterAllocation");
+        jsonSerializer.serializeLIR(*lir);
+        jsonSerializer.endPass();
+      }
+      jsonPrinter.printf(",\n");
+    }
+    fflush(serializerFile);
+  }
+
   {
     AutoTraceLog log(logger, TraceLogger_RegisterAllocation);
 
@@ -1590,6 +1624,21 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
     if (mir->shouldCancel("Allocate Registers")) {
       return nullptr;
     }
+  }
+
+  {
+    LockGuard<Mutex> guard(serializerLock);
+    {
+      Fprinter jsonPrinter(serializerFile);
+      {
+        JSONSerializer jsonSerializer(jsonPrinter);
+        jsonSerializer.beginPass(graph.id(), "afterRegisterAllocation");
+        jsonSerializer.serializeLIR(*lir);
+        jsonSerializer.endPass();
+      }
+      jsonPrinter.printf(",\n");
+    }
+    fflush(serializerFile);
   }
 
   return lir;

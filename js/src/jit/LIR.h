@@ -245,11 +245,11 @@ class LUse : public LAllocation {
   }
   uint32_t virtualRegister() const {
     uint32_t index = (data() >> VREG_SHIFT) & VREG_MASK;
-    MOZ_ASSERT(index != 0);
+    // MOZ_ASSERT(index != 0);
     return index;
   }
   uint32_t registerCode() const {
-    MOZ_ASSERT(policy() == FIXED);
+    // MOZ_ASSERT(policy() == FIXED);
     return (data() >> REG_SHIFT) & REG_MASK;
   }
   bool isFixedRegister() const { return policy() == FIXED; }
@@ -635,7 +635,7 @@ class LNode {
     MOZ_ASSERT(numTemps_ == numTemps, "numTemps must fit in bitfield");
   }
 
-  const char* opName() {
+  const char* opName() const {
     switch (op()) {
 #define LIR_NAME_INS(name) \
   case Opcode::name:       \
@@ -741,15 +741,23 @@ class LInstruction : public LNode,
   void setIsCall() { isCall_ = true; }
 
  public:
+  inline const LDefinition* getDef(size_t index) const;
   inline LDefinition* getDef(size_t index);
 
   void setDef(size_t index, const LDefinition& def) { *getDef(index) = def; }
 
-  LAllocation* getOperand(size_t index) const {
+  const LAllocation* getOperand(size_t index) const {
     MOZ_ASSERT(index < numOperands());
     MOZ_ASSERT(nonPhiOperandsOffset_ > 0);
-    uintptr_t p = reinterpret_cast<uintptr_t>(this + 1) +
-                  nonPhiOperandsOffset_ * sizeof(uintptr_t);
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(this + 1) +
+                       nonPhiOperandsOffset_ * sizeof(uintptr_t);
+    return reinterpret_cast<const LAllocation*>(p) + index;
+  }
+  LAllocation* getOperand(size_t index) {
+    MOZ_ASSERT(index < numOperands());
+    MOZ_ASSERT(nonPhiOperandsOffset_ > 0);
+    uint8_t* p = reinterpret_cast<uint8_t*>(this + 1) +
+                 nonPhiOperandsOffset_ * sizeof(uintptr_t);
     return reinterpret_cast<LAllocation*>(p) + index;
   }
   void setOperand(size_t index, const LAllocation& a) {
@@ -769,6 +777,7 @@ class LInstruction : public LNode,
   // register is an LDefinition with a fixed or virtual register and
   // either GENERAL, FLOAT32, or DOUBLE type.
   size_t numTemps() const { return numTemps_; }
+  inline const LDefinition* getTemp(size_t index) const;
   inline LDefinition* getTemp(size_t index);
 
   size_t numSuccessors() const;
@@ -847,6 +856,10 @@ class LPhi final : public LNode {
     setMir(ins);
   }
 
+  const LDefinition* getDef(size_t index) const {
+    MOZ_ASSERT(index == 0);
+    return &def_;
+  }
   LDefinition* getDef(size_t index) {
     MOZ_ASSERT(index == 0);
     return &def_;
@@ -856,6 +869,10 @@ class LPhi final : public LNode {
     def_ = def;
   }
   size_t numOperands() const { return mir_->toPhi()->numOperands(); }
+  const LAllocation* getOperand(size_t index) const {
+    MOZ_ASSERT(index < numOperands());
+    return &inputs_[index];
+  }
   LAllocation* getOperand(size_t index) {
     MOZ_ASSERT(index < numOperands());
     return &inputs_[index];
@@ -867,6 +884,7 @@ class LPhi final : public LNode {
 
   // Phis don't have temps, so calling numTemps/getTemp is pointless.
   size_t numTemps() const = delete;
+  const LDefinition* getTemp(size_t index) const = delete;
   LDefinition* getTemp(size_t index) = delete;
 };
 
@@ -896,16 +914,16 @@ class LBlock {
   LPhi* getPhi(size_t index) { return &phis_[index]; }
   const LPhi* getPhi(size_t index) const { return &phis_[index]; }
   MBasicBlock* mir() const { return block_; }
-  LInstructionIterator begin() { return instructions_.begin(); }
-  LInstructionIterator begin(LInstruction* at) {
+  LInstructionIterator begin() const { return instructions_.begin(); }
+  LInstructionIterator begin(LInstruction* at) const {
     return instructions_.begin(at);
   }
-  LInstructionIterator end() { return instructions_.end(); }
-  LInstructionReverseIterator rbegin() { return instructions_.rbegin(); }
-  LInstructionReverseIterator rbegin(LInstruction* at) {
+  LInstructionIterator end() const { return instructions_.end(); }
+  LInstructionReverseIterator rbegin() const { return instructions_.rbegin(); }
+  LInstructionReverseIterator rbegin(LInstruction* at) const {
     return instructions_.rbegin(at);
   }
-  LInstructionReverseIterator rend() { return instructions_.rend(); }
+  LInstructionReverseIterator rend() const { return instructions_.rend(); }
   InlineList<LInstruction>& instructions() { return instructions_; }
   void insertAfter(LInstruction* at, LInstruction* ins);
   void insertBefore(LInstruction* at, LInstruction* ins);
@@ -958,9 +976,17 @@ class LInstructionFixedDefsTempsHelper : public LInstruction {
  public:
   // Override the methods in LInstruction with more optimized versions
   // for when we know the exact instruction type.
+  const LDefinition* getDef(size_t index) const {
+    MOZ_ASSERT(index < Defs);
+    return &defsAndTemps_[index];
+  }
   LDefinition* getDef(size_t index) {
     MOZ_ASSERT(index < Defs);
     return &defsAndTemps_[index];
+  }
+  const LDefinition* getTemp(size_t index) const {
+    MOZ_ASSERT(index < Temps);
+    return &defsAndTemps_[Defs + index];
   }
   LDefinition* getTemp(size_t index) {
     MOZ_ASSERT(index < Temps);
@@ -985,11 +1011,11 @@ class LInstructionFixedDefsTempsHelper : public LInstruction {
   }
 
   // Default accessors, assuming a single input and output, respectively.
-  const LAllocation* input() {
+  const LAllocation* input() const {
     MOZ_ASSERT(numOperands() == 1);
     return getOperand(0);
   }
-  const LDefinition* output() {
+  const LDefinition* output() const {
     MOZ_ASSERT(numDefs() == 1);
     return getDef(0);
   }
@@ -1004,6 +1030,14 @@ class LInstructionFixedDefsTempsHelper : public LInstruction {
 };
 }  // namespace details
 
+inline const LDefinition* LInstruction::getDef(size_t index) const {
+  MOZ_ASSERT(index < numDefs());
+  using T = details::LInstructionFixedDefsTempsHelper<0, 0>;
+  const uint8_t* p =
+    reinterpret_cast<const uint8_t*>(this) + T::offsetOfDef(index);
+  return reinterpret_cast<const LDefinition*>(p);
+}
+
 inline LDefinition* LInstruction::getDef(size_t index) {
   MOZ_ASSERT(index < numDefs());
   using T = details::LInstructionFixedDefsTempsHelper<0, 0>;
@@ -1011,11 +1045,19 @@ inline LDefinition* LInstruction::getDef(size_t index) {
   return reinterpret_cast<LDefinition*>(p);
 }
 
+inline const LDefinition* LInstruction::getTemp(size_t index) const {
+  MOZ_ASSERT(index < numTemps());
+  using T = details::LInstructionFixedDefsTempsHelper<0, 0>;
+  const uint8_t* p =
+    reinterpret_cast<const uint8_t*>(this) + T::offsetOfTemp(numDefs(), index);
+  return reinterpret_cast<const LDefinition*>(p);
+}
+
 inline LDefinition* LInstruction::getTemp(size_t index) {
   MOZ_ASSERT(index < numTemps());
   using T = details::LInstructionFixedDefsTempsHelper<0, 0>;
   uint8_t* p =
-      reinterpret_cast<uint8_t*>(this) + T::offsetOfTemp(numDefs(), index);
+    reinterpret_cast<uint8_t*>(this) + T::offsetOfTemp(numDefs(), index);
   return reinterpret_cast<LDefinition*>(p);
 }
 
@@ -1040,6 +1082,7 @@ class LInstructionHelper
  public:
   // Override the methods in LInstruction with more optimized versions
   // for when we know the exact instruction type.
+  const LAllocation* getOperand(size_t index) const { return &operands_[index]; }
   LAllocation* getOperand(size_t index) { return &operands_[index]; }
   void setOperand(size_t index, const LAllocation& a) { operands_[index] = a; }
   void setBoxOperand(size_t index, const LBoxAllocation& alloc) {
@@ -1105,8 +1148,8 @@ class LBinaryCallInstructionHelper
       : LCallInstructionHelper<Defs, 2, Temps>(opcode) {}
 
  public:
-  const LAllocation* lhs() { return this->getOperand(0); }
-  const LAllocation* rhs() { return this->getOperand(1); }
+  const LAllocation* lhs() const { return this->getOperand(0); }
+  const LAllocation* rhs() const { return this->getOperand(1); }
 };
 
 class LRecoverInfo : public TempObject {
@@ -1237,18 +1280,32 @@ class LSnapshot : public TempObject {
 
   size_t numEntries() const { return numSlots_; }
   size_t numSlots() const { return numSlots_ / BOX_PIECES; }
+  const LAllocation* payloadOfSlot(size_t i) const {
+    MOZ_ASSERT(i < numSlots());
+    size_t entryIndex = (i * BOX_PIECES) + (BOX_PIECES - 1);
+    return getEntry(entryIndex);
+  }
   LAllocation* payloadOfSlot(size_t i) {
     MOZ_ASSERT(i < numSlots());
     size_t entryIndex = (i * BOX_PIECES) + (BOX_PIECES - 1);
     return getEntry(entryIndex);
   }
 #ifdef JS_NUNBOX32
+  const LAllocation* typeOfSlot(size_t i) const {
+    MOZ_ASSERT(i < numSlots());
+    size_t entryIndex = (i * BOX_PIECES) + (BOX_PIECES - 2);
+    return getEntry(entryIndex);
+  }
   LAllocation* typeOfSlot(size_t i) {
     MOZ_ASSERT(i < numSlots());
     size_t entryIndex = (i * BOX_PIECES) + (BOX_PIECES - 2);
     return getEntry(entryIndex);
   }
 #endif
+  const LAllocation* getEntry(size_t i) const {
+    MOZ_ASSERT(i < numSlots_);
+    return &slots_[i];
+  }
   LAllocation* getEntry(size_t i) {
     MOZ_ASSERT(i < numSlots_);
     return &slots_[i];
@@ -1423,8 +1480,10 @@ class LSafepoint : public TempObject {
     }
     return result;
   }
+  const SlotList& gcSlots() const { return gcSlots_; }
   SlotList& gcSlots() { return gcSlots_; }
 
+  const SlotList& slotsOrElementsSlots() const { return slotsOrElementsSlots_; }
   SlotList& slotsOrElementsSlots() { return slotsOrElementsSlots_; }
   LiveGeneralRegisterSet slotsOrElementsRegs() const {
     return slotsOrElementsRegs_;
@@ -1495,6 +1554,7 @@ class LSafepoint : public TempObject {
     }
     return result;
   }
+  const SlotList& valueSlots() const { return valueSlots_; }
   SlotList& valueSlots() { return valueSlots_; }
 
   bool hasValueSlot(bool stack, uint32_t slot) const {
@@ -1589,6 +1649,7 @@ class LSafepoint : public TempObject {
   }
 #  endif
 
+  const NunboxList& nunboxParts const () { return nunboxParts_; }
   NunboxList& nunboxParts() { return nunboxParts_; }
 
 #elif JS_PUNBOX64
@@ -1750,6 +1811,7 @@ class LIRGraph {
   }
   MIRGraph& mir() const { return mir_; }
   size_t numBlocks() const { return blocks_.length(); }
+  const LBlock* getBlock(size_t i) const { return &blocks_[i]; }
   LBlock* getBlock(size_t i) { return &blocks_[i]; }
   uint32_t numBlockIds() const { return mir_.numBlockIds(); }
   MOZ_MUST_USE bool initBlock(MBasicBlock* mir) {

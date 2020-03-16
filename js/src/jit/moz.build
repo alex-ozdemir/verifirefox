@@ -59,6 +59,7 @@ UNIFIED_SOURCES += [
     'JitScript.cpp',
     'JitSpewer.cpp',
     'JSJitFrameIter.cpp',
+    'JSONSerializer.cpp',
     'JSONSpewer.cpp',
     'LICM.cpp',
     'Linker.cpp',
