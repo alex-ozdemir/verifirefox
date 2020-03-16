@@ -95,6 +95,10 @@ void MIRGenerator::addAbortedPreliminaryGroup(ObjectGroup* group) {
   }
 }
 
+/* static */ mozilla::Atomic<uint32_t, mozilla::SequentiallyConsistent,
+                             mozilla::recordreplay::Behavior::DontPreserve>
+    MIRGraph::idGen_;
+
 void MIRGraph::addBlock(MBasicBlock* block) {
   MOZ_ASSERT(block);
   block->setId(blockIdGen_++);

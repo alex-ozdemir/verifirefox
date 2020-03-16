@@ -710,11 +710,16 @@ typedef InlineListReverseIterator<MBasicBlock> PostorderIterator;
 typedef Vector<MBasicBlock*, 1, JitAllocPolicy> MIRGraphReturns;
 
 class MIRGraph {
+  static mozilla::Atomic<uint32_t, mozilla::SequentiallyConsistent,
+                         mozilla::recordreplay::Behavior::DontPreserve>
+      idGen_;
+  uint32_t id_;
+
   InlineList<MBasicBlock> blocks_;
   TempAllocator* alloc_;
   MIRGraphReturns* returnAccumulator_;
   uint32_t blockIdGen_;
-  uint32_t idGen_;
+  uint32_t definitionIdGen_;
   MBasicBlock* osrBlock_;
 
   size_t numBlocks_;
@@ -725,14 +730,17 @@ class MIRGraph {
 
  public:
   explicit MIRGraph(TempAllocator* alloc)
-      : alloc_(alloc),
+      : id_(++idGen_),
+        alloc_(alloc),
         returnAccumulator_(nullptr),
         blockIdGen_(0),
-        idGen_(0),
+        definitionIdGen_(0),
         osrBlock_(nullptr),
         numBlocks_(0),
         hasTryBlock_(false),
         phiFreeListLength_(0) {}
+
+  uint32_t id() const { return id_; }
 
   TempAllocator& alloc() const { return *alloc_; }
 
@@ -786,8 +794,8 @@ class MIRGraph {
   }
   size_t numBlocks() const { return numBlocks_; }
   uint32_t numBlockIds() const { return blockIdGen_; }
-  void allocDefinitionId(MDefinition* ins) { ins->setId(idGen_++); }
-  uint32_t getNumInstructionIds() { return idGen_; }
+  void allocDefinitionId(MDefinition* ins) { ins->setId(definitionIdGen_++); }
+  uint32_t getNumInstructionIds() { return definitionIdGen_; }
   MResumePoint* entryResumePoint() { return entryBlock()->entryResumePoint(); }
 
   void setOsrBlock(MBasicBlock* osrBlock) {
