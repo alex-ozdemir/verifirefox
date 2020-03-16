@@ -118,16 +118,29 @@ void JSONPrinter::value(const char* format, ...) {
   first_ = false;
 }
 
+void JSONPrinter::property(const char* name, bool value) {
+  propertyName(name);
+  out_.printf("%s", value ? "true" : "false");
+}
+
+void JSONPrinter::value(bool value) {
+  if (!first_) {
+    out_.putChar(',');
+  }
+  out_.printf("%s", value ? "true" : "false");
+  first_ = false;
+}
+
 void JSONPrinter::property(const char* name, int32_t value) {
   propertyName(name);
   out_.printf("%" PRId32, value);
 }
 
-void JSONPrinter::value(int val) {
+void JSONPrinter::value(int32_t value) {
   if (!first_) {
     out_.putChar(',');
   }
-  out_.printf("%d", val);
+  out_.printf("%" PRId32, value);
   first_ = false;
 }
 
@@ -136,9 +149,25 @@ void JSONPrinter::property(const char* name, uint32_t value) {
   out_.printf("%" PRIu32, value);
 }
 
+void JSONPrinter::value(uint32_t value) {
+  if (!first_) {
+    out_.putChar(',');
+  }
+  out_.printf("%" PRIu32, value);
+  first_ = false;
+}
+
 void JSONPrinter::property(const char* name, int64_t value) {
   propertyName(name);
   out_.printf("%" PRId64, value);
+}
+
+void JSONPrinter::value(int64_t value) {
+  if (!first_) {
+    out_.putChar(',');
+  }
+  out_.printf("%" PRId64, value);
+  first_ = false;
 }
 
 void JSONPrinter::property(const char* name, uint64_t value) {
@@ -146,10 +175,52 @@ void JSONPrinter::property(const char* name, uint64_t value) {
   out_.printf("%" PRIu64, value);
 }
 
+void JSONPrinter::value(uint64_t value) {
+  if (!first_) {
+    out_.putChar(',');
+  }
+  out_.printf("%" PRIu64, value);
+  first_ = false;
+}
+
+void JSONPrinter::property(const char* name, float value) {
+  propertyName(name);
+  out_.printf("%f", value);
+}
+
+void JSONPrinter::value(float value) {
+  if (!first_) {
+    out_.putChar(',');
+  }
+  out_.printf("%f", value);
+  first_ = false;
+}
+
+void JSONPrinter::property(const char* name, double value) {
+  propertyName(name);
+  out_.printf("%f", value);
+}
+
+void JSONPrinter::value(double value) {
+  if (!first_) {
+    out_.putChar(',');
+  }
+  out_.printf("%f", value);
+  first_ = false;
+}
+
 #if defined(XP_DARWIN) || defined(__OpenBSD__)
 void JSONPrinter::property(const char* name, size_t value) {
   propertyName(name);
   out_.printf("%zu", value);
+}
+
+void JSONPrinter::value(size_t value) {
+  if (!first_) {
+    out_.putChar(',');
+  }
+  out_.printf("%zu", value);
+  first_ = false;
 }
 #endif
 

@@ -44,17 +44,28 @@ class JSONPrinter {
   void beginListProperty(const char* name);
 
   void value(const char* format, ...) MOZ_FORMAT_PRINTF(2, 3);
-  void value(int value);
+  void value(bool value);
+  void value(int32_t value);
+  void value(uint32_t value);
+  void value(int64_t value);
+  void value(uint64_t value);
+  void value(float value);
+  void value(double value);
 
   void property(const char* name, const char* value);
+  void property(const char* name, bool value);
   void property(const char* name, int32_t value);
   void property(const char* name, uint32_t value);
   void property(const char* name, int64_t value);
   void property(const char* name, uint64_t value);
+  void property(const char* name, float value);
+  void property(const char* name, double value);
+
 #if defined(XP_DARWIN) || defined(__OpenBSD__)
   // On OSX and OpenBSD, size_t is long unsigned, uint32_t is unsigned, and
   // uint64_t is long long unsigned. Everywhere else, size_t matches either
   // uint32_t or uint64_t.
+  void value(size_t value);
   void property(const char* name, size_t value);
 #endif
 
