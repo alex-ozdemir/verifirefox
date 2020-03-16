@@ -712,7 +712,7 @@ class BacktrackingAllocator : protected RegisterAllocator {
     if (from->bundle()->allocation() == to->bundle()->allocation()) {
       return true;
     }
-    LMoveGroup* moves = block->getExitMoveGroup(alloc());
+    LMoveGroup* moves = getExitMoveGroup(block);
     return addMove(moves, from, to, type);
   }
 
@@ -721,7 +721,7 @@ class BacktrackingAllocator : protected RegisterAllocator {
     if (from->bundle()->allocation() == to->bundle()->allocation()) {
       return true;
     }
-    LMoveGroup* moves = block->getEntryMoveGroup(alloc());
+    LMoveGroup* moves = getEntryMoveGroup(block);
     return addMove(moves, from, to, type);
   }
 

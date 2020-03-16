@@ -555,6 +555,28 @@ bool RegisterAllocator::init() {
   return true;
 }
 
+LMoveGroup* RegisterAllocator::getEntryMoveGroup(LBlock* block) {
+  if (block->entryMoves()) {
+    return block->entryMoves();
+  }
+
+  LMoveGroup* moves = LMoveGroup::New(alloc());
+  block->setEntryMoves(moves);
+  block->insertBefore(*block->begin(), moves);
+  return moves;
+}
+
+LMoveGroup* RegisterAllocator::getExitMoveGroup(LBlock* block) {
+  if (block->exitMoves()) {
+    return block->exitMoves();
+  }
+
+  LMoveGroup* moves = LMoveGroup::New(alloc());
+  block->setExitMoves(moves);
+  block->insertBefore(*block->rbegin(), moves);
+  return moves;
+}
+
 LMoveGroup* RegisterAllocator::getInputMoveGroup(LInstruction* ins) {
   MOZ_ASSERT(!ins->fixReuseMoves());
   if (ins->inputMoves()) {

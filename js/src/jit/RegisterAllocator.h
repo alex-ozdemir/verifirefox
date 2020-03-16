@@ -291,6 +291,8 @@ class RegisterAllocator {
     return exitPositions[block->mir()->id()];
   }
 
+  LMoveGroup* getEntryMoveGroup(LBlock* block);
+  LMoveGroup* getExitMoveGroup(LBlock* block);
   LMoveGroup* getInputMoveGroup(LInstruction* ins);
   LMoveGroup* getFixReuseMoveGroup(LInstruction* ins);
   LMoveGroup* getMoveGroupAfter(LInstruction* ins);

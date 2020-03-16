@@ -867,18 +867,23 @@ class LPhi final : public LNode {
   LDefinition* getTemp(size_t index) = delete;
 };
 
+class LIRGraph;
 class LMoveGroup;
 class LBlock {
+  LIRGraph* graph_;
   MBasicBlock* block_;
   FixedList<LPhi> phis_;
   InlineList<LInstruction> instructions_;
-  LMoveGroup* entryMoveGroup_;
-  LMoveGroup* exitMoveGroup_;
+  LMoveGroup* entryMoves_;
+  LMoveGroup* exitMoves_;
   Label label_;
 
  public:
   explicit LBlock(MBasicBlock* block);
-  MOZ_MUST_USE bool init(TempAllocator& alloc);
+  MOZ_MUST_USE bool init(TempAllocator& alloc, LIRGraph* graph);
+
+  const LIRGraph* graph() const { return graph_; }
+  LIRGraph* graph() { return graph_; }
 
   void add(LInstruction* ins) {
     ins->setBlock(this);
@@ -899,12 +904,8 @@ class LBlock {
   }
   LInstructionReverseIterator rend() { return instructions_.rend(); }
   InlineList<LInstruction>& instructions() { return instructions_; }
-  void insertAfter(LInstruction* at, LInstruction* ins) {
-    instructions_.insertAfter(at, ins);
-  }
-  void insertBefore(LInstruction* at, LInstruction* ins) {
-    instructions_.insertBefore(at, ins);
-  }
+  void insertAfter(LInstruction* at, LInstruction* ins);
+  void insertBefore(LInstruction* at, LInstruction* ins);
   const LNode* firstElementWithId() const {
     return !phis_.empty() ? static_cast<const LNode*>(getPhi(0))
                           : firstInstructionWithId();
@@ -927,8 +928,10 @@ class LBlock {
     return &label_;
   }
 
-  LMoveGroup* getEntryMoveGroup(TempAllocator& alloc);
-  LMoveGroup* getExitMoveGroup(TempAllocator& alloc);
+  LMoveGroup* entryMoves() const { return entryMoves_; }
+  void setEntryMoves(LMoveGroup* moves) { entryMoves_ = moves; }
+  LMoveGroup* exitMoves() const { return exitMoves_; }
+  void setExitMoves(LMoveGroup* moves) { exitMoves_ = moves; }
 
   // Test whether this basic block is empty except for a simple goto, and
   // which is not forming a loop. No code will be emitted for such blocks.
@@ -1749,7 +1752,7 @@ class LIRGraph {
   MOZ_MUST_USE bool initBlock(MBasicBlock* mir) {
     auto* block = &blocks_[mir->id()];
     auto* lir = new (block) LBlock(mir);
-    return lir->init(mir_.alloc());
+    return lir->init(mir_.alloc(), this);
   }
   uint32_t getVirtualRegister() {
     numVirtualRegisters_ += VREG_INCREMENT;

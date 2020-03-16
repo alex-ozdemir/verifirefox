@@ -67,11 +67,13 @@ void LIRGraph::dump() {
 #endif
 
 LBlock::LBlock(MBasicBlock* from)
-    : block_(from), phis_(), entryMoveGroup_(nullptr), exitMoveGroup_(nullptr) {
+    : block_(from), phis_(), entryMoves_(nullptr), exitMoves_(nullptr) {
   from->assignLir(this);
 }
 
-bool LBlock::init(TempAllocator& alloc) {
+bool LBlock::init(TempAllocator& alloc, LIRGraph* graph) {
+  graph_ = graph;
+
   // Count the number of LPhis we'll need.
   size_t numLPhis = 0;
   for (MPhiIterator i(block_->phisBegin()), e(block_->phisEnd()); i != e; ++i) {
@@ -139,22 +141,17 @@ const LInstruction* LBlock::firstInstructionWithId() const {
   return 0;
 }
 
-LMoveGroup* LBlock::getEntryMoveGroup(TempAllocator& alloc) {
-  if (entryMoveGroup_) {
-    return entryMoveGroup_;
+void LBlock::insertAfter(LInstruction* at, LInstruction* ins) {
+  instructions_.insertAfter(at, ins);
+  if (!ins->id()) {
+    ins->setId(graph_->getInstructionId());
   }
-  entryMoveGroup_ = LMoveGroup::New(alloc);
-  insertBefore(*begin(), entryMoveGroup_);
-  return entryMoveGroup_;
 }
-
-LMoveGroup* LBlock::getExitMoveGroup(TempAllocator& alloc) {
-  if (exitMoveGroup_) {
-    return exitMoveGroup_;
+void LBlock::insertBefore(LInstruction* at, LInstruction* ins) {
+  instructions_.insertBefore(at, ins);
+  if (!ins->id()) {
+    ins->setId(graph_->getInstructionId());
   }
-  exitMoveGroup_ = LMoveGroup::New(alloc);
-  insertBefore(*rbegin(), exitMoveGroup_);
-  return exitMoveGroup_;
 }
 
 #ifdef JS_JITSPEW
