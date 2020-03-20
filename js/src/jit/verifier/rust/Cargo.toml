@@ -1,0 +1,17 @@
+[package]
+name = "verifirefox"
+version = "0.1.0"
+authors = [
+  "Fraser Brown <mlfbrown@stanford.edu>",
+  "Michael Smith <mds009@eng.ucsd.edu>",
+  "Deian Stefan <deian@cs.ucsd.edu>"
+]
+license = "MPL-2.0"
+description = """
+Online translation verifier for IonMonkey JIT IR
+"""
+edition = "2018"
+
+[lib]
+crate-type = ["rlib"]
+name = "verifirefox"

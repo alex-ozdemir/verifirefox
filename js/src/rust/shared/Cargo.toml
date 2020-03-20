@@ -14,6 +14,7 @@ encoding_c = "0.9.5"
 encoding_c_mem = "0.2.4"
 mozilla-central-workspace-hack = { path = "../../../../build/workspace-hack" }
 mozglue-static = { path = "../../../../mozglue/static/rust" }
+verifirefox = { path = "../../jit/verifier/rust" }
 
 [features]
 cranelift_x86 = ['baldrdash/cranelift_x86']

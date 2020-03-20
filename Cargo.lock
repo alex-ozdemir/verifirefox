@@ -1967,6 +1967,7 @@ dependencies = [
  "encoding_c_mem",
  "mozglue-static",
  "mozilla-central-workspace-hack",
+ "verifirefox",
 ]
 
 [[package]]
@@ -4535,6 +4536,10 @@ name = "vec_map"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "887b5b631c2ad01628bbbaa7dd4c869f80d3186688f8d0b6f58774fbe324988c"
+
+[[package]]
+name = "verifirefox"
+version = "0.1.0"
 
 [[package]]
 name = "version_check"

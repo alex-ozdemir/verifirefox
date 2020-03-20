@@ -4,6 +4,7 @@ rust:
     include:
         - build/workspace-hack/
         - gfx/wr/peek-poke/peek-poke-derive/
+        - js/src/jit/verifier/rust/
         - js/src/rust/shared/
         - security/manager/ssl/osclientcerts/
         - servo/components/size_of_test/

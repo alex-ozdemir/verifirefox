@@ -250,3 +250,7 @@ GeneratedFile('LOpcodes.h',
               script='GenerateOpcodeFiles.py',
               entry_point='generate_lir_header',
               inputs=lir_inputs)
+
+DIRS += [
+    'verifier',
+]

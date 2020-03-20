@@ -35,7 +35,6 @@
 #include "jit/JitCommon.h"
 #include "jit/JitRealm.h"
 #include "jit/JitSpewer.h"
-#include "jit/JSONSerializer.h"
 #include "jit/LICM.h"
 #include "jit/Linker.h"
 #include "jit/LIR.h"
@@ -46,6 +45,8 @@
 #include "jit/Sink.h"
 #include "jit/StupidAllocator.h"
 #include "jit/ValueNumbering.h"
+#include "jit/verifier/VerifierMarshalling.h"
+#include "jit/verifier/VerifierPasses.h"
 #include "jit/WasmBCE.h"
 #include "js/Printf.h"
 #include "js/UniquePtr.h"
@@ -1538,31 +1539,8 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
 
   AllocationIntegrityState integrity(*lir);
 
-  static Mutex serializerLock(mutexid::IonSerializer);
-  static FILE* serializerFile = nullptr;
-
-  {
-    LockGuard<Mutex> guard(serializerLock);
-
-    if (!serializerFile) {
-      char buffer[256];
-      const uint32_t pid = (uint32_t) getpid();
-      snprintf(buffer, sizeof(buffer), "ion-%" PRIu32 ".json", pid);
-      serializerFile = fopen(buffer, "w");
-    }
-
-    {
-      Fprinter jsonPrinter(serializerFile);
-      {
-        JSONSerializer jsonSerializer(jsonPrinter);
-        jsonSerializer.beginPass(graph.id(), "beforeRegisterAllocation");
-        jsonSerializer.serializeLIR(*lir);
-        jsonSerializer.endPass();
-      }
-      jsonPrinter.printf(",\n");
-    }
-    fflush(serializerFile);
-  }
+  // TODO: RAII this.
+  verifier::LIRGraph* const beforeGraph = verifier::MarshallLIRGraph(*lir);
 
   {
     AutoTraceLog log(logger, TraceLogger_RegisterAllocation);
@@ -1576,6 +1554,7 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
 #ifdef DEBUG
         if (JitOptions.fullDebugChecks) {
           if (!integrity.record()) {
+            verifier::DropLIRGraph(beforeGraph);
             return nullptr;
           }
         }
@@ -1584,12 +1563,14 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
         BacktrackingAllocator regalloc(mir, &lirgen, *lir,
                                        allocator == RegisterAllocator_Testbed);
         if (!regalloc.go()) {
+          verifier::DropLIRGraph(beforeGraph);
           return nullptr;
         }
 
 #ifdef DEBUG
         if (JitOptions.fullDebugChecks) {
           if (!integrity.check(false)) {
+            verifier::DropLIRGraph(beforeGraph);
             return nullptr;
           }
         }
@@ -1603,14 +1584,17 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
         // Use the integrity checker to populate safepoint information, so
         // run it in all builds.
         if (!integrity.record()) {
+          verifier::DropLIRGraph(beforeGraph);
           return nullptr;
         }
 
         StupidAllocator regalloc(mir, &lirgen, *lir);
         if (!regalloc.go()) {
+          verifier::DropLIRGraph(beforeGraph);
           return nullptr;
         }
         if (!integrity.check(true)) {
+          verifier::DropLIRGraph(beforeGraph);
           return nullptr;
         }
         gs.spewPass("Allocate Registers [Stupid]");
@@ -1622,24 +1606,21 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
     }
 
     if (mir->shouldCancel("Allocate Registers")) {
+      verifier::DropLIRGraph(beforeGraph);
       return nullptr;
     }
   }
 
+  verifier::LIRGraph* const afterGraph = verifier::MarshallLIRGraph(*lir);
+
   {
-    LockGuard<Mutex> guard(serializerLock);
-    {
-      Fprinter jsonPrinter(serializerFile);
-      {
-        JSONSerializer jsonSerializer(jsonPrinter);
-        jsonSerializer.beginPass(graph.id(), "afterRegisterAllocation");
-        jsonSerializer.serializeLIR(*lir);
-        jsonSerializer.endPass();
-      }
-      jsonPrinter.printf(",\n");
-    }
-    fflush(serializerFile);
+    static Mutex verifierLock(mutexid::IonVerifier);
+    LockGuard<Mutex> guard(verifierLock);
+    verifier::VerifyRegAllocationPass(beforeGraph, afterGraph);
   }
+
+  verifier::DropLIRGraph(beforeGraph);
+  verifier::DropLIRGraph(afterGraph);
 
   return lir;
 }
