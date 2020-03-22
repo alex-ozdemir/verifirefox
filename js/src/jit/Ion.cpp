@@ -35,6 +35,7 @@
 #include "jit/JitCommon.h"
 #include "jit/JitRealm.h"
 #include "jit/JitSpewer.h"
+#include "jit/JSONSerializer.h"
 #include "jit/LICM.h"
 #include "jit/Linker.h"
 #include "jit/LIR.h"
@@ -1268,6 +1269,34 @@ bool OptimizeMIR(MIRGenerator* mir) {
   }
 
   if (mir->optimizationInfo().licmEnabled()) {
+
+    // <JSON serialize MIR graph before LICM>
+    static Mutex serializerLock(mutexid::IonSerializer);
+    static FILE* serializerFile = nullptr;
+
+    {
+      LockGuard<Mutex> guard(serializerLock);
+
+      if (!serializerFile) {
+        char buffer[256];
+        const uint32_t pid = (uint32_t) getpid();
+        snprintf(buffer, sizeof(buffer), "ion-%" PRIu32 ".json", pid);
+        serializerFile = fopen(buffer, "w");
+      }
+
+      {
+        Fprinter jsonPrinter(serializerFile);
+        {
+          JSONSerializer jsonSerializer(jsonPrinter);
+          jsonSerializer.beginPass(graph.id(), "beforeLICM", "MIR");
+          jsonSerializer.serializeMIR(graph);
+          jsonSerializer.endPass();
+        }
+        jsonPrinter.printf(",\n");
+      }
+      fflush(serializerFile);
+    }
+    // </JSON serialize MIR graph before LICM>
     AutoTraceLog log(logger, TraceLogger_LICM);
     // LICM can hoist instructions from conditional branches and trigger
     // repeated bailouts. Disable it if this script is known to bailout
@@ -1282,6 +1311,22 @@ bool OptimizeMIR(MIRGenerator* mir) {
       if (mir->shouldCancel("LICM")) {
         return false;
       }
+      // <JSON serialize MIR graph after LICM>
+      {
+        LockGuard<Mutex> guard(serializerLock);
+        {
+          Fprinter jsonPrinter(serializerFile);
+          {
+            JSONSerializer jsonSerializer(jsonPrinter);
+            jsonSerializer.beginPass(graph.id(), "afterLICM", "LICM");
+            jsonSerializer.serializeMIR(graph);
+            jsonSerializer.endPass();
+          }
+          jsonPrinter.printf(",\n");
+        }
+        fflush(serializerFile);
+      }
+      // </JSON serialize MIR graph after LICM>
     }
   }
 

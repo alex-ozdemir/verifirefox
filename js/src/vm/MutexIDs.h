@@ -39,6 +39,7 @@
   _(ShellStreamCacheEntryState, 500)  \
   _(SimulatorCacheLock, 500)          \
   _(Arm64SimulatorLock, 500)          \
+  _(IonSerializer, 500)               \
   _(IonSpewer, 500)                   \
   _(IonVerifier, 500)                 \
   _(PerfSpewer, 500)                  \
