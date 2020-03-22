@@ -65,7 +65,6 @@ static bool CheckUsesAreFloat32Consumers(const MInstruction* ins) {
   return allConsumerUses;
 }
 
-#ifdef JS_JITSPEW
 static const char* OpcodeName(MDefinition::Opcode op) {
   static const char* const names[] = {
 #  define NAME(x) #  x,
@@ -75,6 +74,7 @@ static const char* OpcodeName(MDefinition::Opcode op) {
   return names[unsigned(op)];
 }
 
+#ifdef JS_JITSPEW
 void MDefinition::PrintOpcodeName(GenericPrinter& out, Opcode op) {
   const char* name = OpcodeName(op);
   size_t len = strlen(name);
@@ -227,9 +227,9 @@ static MMul* EvaluateExactReciprocal(TempAllocator& alloc, MDiv* ins) {
   return mul;
 }
 
-#ifdef JS_JITSPEW
 const char* MDefinition::opName() const { return OpcodeName(op()); }
 
+#ifdef JS_JITSPEW
 void MDefinition::printName(GenericPrinter& out) const {
   PrintOpcodeName(out, op());
   out.printf("%u", id());
