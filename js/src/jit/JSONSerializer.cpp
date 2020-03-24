@@ -525,6 +525,8 @@ void JSONSerializer::serializeMDefinition(MDefinition& def) {
     if (op) {
       property("name", op->opName());
       property("type", StringFromMIRType(op->type()));
+      property("id", op->id());
+      property("blockId", op->block()->id());
     }
     endObject();
   }
@@ -558,6 +560,8 @@ void JSONSerializer::serializeMResumePoint(MResumePoint& rp) {
     if (op) {
       property("name", op->opName());
       property("type", StringFromMIRType(op->type()));
+      property("id", op->id());
+      property("blockId", op->block()->id());
     }
     endObject();
   }
