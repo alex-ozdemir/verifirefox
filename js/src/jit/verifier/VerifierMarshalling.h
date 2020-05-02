@@ -10,17 +10,13 @@
 #include "jit/LIR.h"
 #include "jit/MIR.h"
 
-#include "jit/verifier/VerifierBindings.h"
+#include "jit/verifier/VerifierTypes.h"
 
 namespace js {
 namespace jit {
 namespace verifier {
 
-LIRGraph* MarshallLIRGraph(const jit::LIRGraph& graph);
-
-inline void DropLIRGraph(LIRGraph* graph) {
-  verifirefox_lir_graph_drop(graph);
-}
+LIRGraph MarshallLirGraph(const jit::LIRGraph& graph);
 
 }  // namespace verifier
 }  // namespace jit

@@ -28,7 +28,7 @@ class LIRGeneratorARM : public LIRGeneratorShared {
   LAllocation useByteOpRegisterOrNonDoubleConstant(MDefinition* mir);
   LDefinition tempByteOpRegister();
 
-  inline LDefinition tempToUnbox() { return LDefinition::BogusTemp(); }
+  inline LDefinition tempToUnbox() { return LDefinition::Bogus(); }
 
   bool needTempForPostBarrier() { return false; }
 

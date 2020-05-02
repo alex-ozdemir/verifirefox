@@ -312,7 +312,7 @@ void CodeGeneratorMIPS64::emitWasmLoadI64(T* lir) {
   const MWasmLoad* mir = lir->mir();
 
   Register ptrScratch = InvalidReg;
-  if (!lir->ptrCopy()->isBogusTemp()) {
+  if (!lir->ptrCopy()->isBogus()) {
     ptrScratch = ToRegister(lir->ptrCopy());
   }
 
@@ -339,7 +339,7 @@ void CodeGeneratorMIPS64::emitWasmStoreI64(T* lir) {
   const MWasmStore* mir = lir->mir();
 
   Register ptrScratch = InvalidReg;
-  if (!lir->ptrCopy()->isBogusTemp()) {
+  if (!lir->ptrCopy()->isBogus()) {
     ptrScratch = ToRegister(lir->ptrCopy());
   }
 

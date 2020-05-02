@@ -15,3 +15,7 @@ edition = "2018"
 [lib]
 crate-type = ["rlib"]
 name = "verifirefox"
+
+[dependencies]
+anyhow = "^1.0.28"
+thiserror = "^1.0.14"

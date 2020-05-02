@@ -13,9 +13,13 @@ namespace js {
 namespace jit {
 namespace verifier {
 
-inline bool VerifyRegAllocationPass(const LIRGraph* beforeGraph,
-                                    const LIRGraph* afterGraph) {
-  return verifirefox_verify_reg_allocation_pass(beforeGraph, afterGraph);
+inline void RunRegAllocPassSync(LIRGraph&& beforeGraph, LIRGraph&& afterGraph) {
+  verifirefox_passes_reg_alloc_sync(*beforeGraph, *afterGraph);
+}
+
+inline void RunRegAllocPassAsync(LIRGraph&& beforeGraph,
+                                 LIRGraph&& afterGraph) {
+  verifirefox_passes_reg_alloc_async(*beforeGraph, *afterGraph);
 }
 
 }  // namespace verifier

@@ -31,7 +31,7 @@ class LIRGeneratorARM64 : public LIRGeneratorShared {
 
   // ARM64 has a scratch register, so no need for another temp for dispatch ICs.
   LDefinition tempForDispatchCache(MIRType outputType = MIRType::None) {
-    return LDefinition::BogusTemp();
+    return LDefinition::Bogus();
   }
 
   void lowerUntypedPhiInput(MPhi* phi, uint32_t inputPosition, LBlock* block,

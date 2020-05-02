@@ -1818,7 +1818,7 @@ void CodeGeneratorMIPSShared::emitWasmLoad(T* lir) {
   const MWasmLoad* mir = lir->mir();
 
   Register ptrScratch = InvalidReg;
-  if (!lir->ptrCopy()->isBogusTemp()) {
+  if (!lir->ptrCopy()->isBogus()) {
     ptrScratch = ToRegister(lir->ptrCopy());
   }
 
@@ -1850,7 +1850,7 @@ void CodeGeneratorMIPSShared::emitWasmStore(T* lir) {
   const MWasmStore* mir = lir->mir();
 
   Register ptrScratch = InvalidReg;
-  if (!lir->ptrCopy()->isBogusTemp()) {
+  if (!lir->ptrCopy()->isBogus()) {
     ptrScratch = ToRegister(lir->ptrCopy());
   }
 
@@ -2105,7 +2105,7 @@ void CodeGenerator::visitWasmCompareExchangeHeap(
   MWasmCompareExchangeHeap* mir = ins->mir();
   Register ptrReg = ToRegister(ins->ptr());
   BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   Register oldval = ToRegister(ins->oldValue());
   Register newval = ToRegister(ins->newValue());
@@ -2122,7 +2122,7 @@ void CodeGenerator::visitWasmAtomicExchangeHeap(LWasmAtomicExchangeHeap* ins) {
   Register ptrReg = ToRegister(ins->ptr());
   Register value = ToRegister(ins->value());
   BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   Register valueTemp = ToTempRegisterOrInvalid(ins->valueTemp());
   Register offsetTemp = ToTempRegisterOrInvalid(ins->offsetTemp());
@@ -2134,7 +2134,7 @@ void CodeGenerator::visitWasmAtomicExchangeHeap(LWasmAtomicExchangeHeap* ins) {
 
 void CodeGenerator::visitWasmAtomicBinopHeap(LWasmAtomicBinopHeap* ins) {
   MOZ_ASSERT(ins->mir()->hasUses());
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   MWasmAtomicBinopHeap* mir = ins->mir();
   Register ptrReg = ToRegister(ins->ptr());
@@ -2152,7 +2152,7 @@ void CodeGenerator::visitWasmAtomicBinopHeap(LWasmAtomicBinopHeap* ins) {
 void CodeGenerator::visitWasmAtomicBinopHeapForEffect(
     LWasmAtomicBinopHeapForEffect* ins) {
   MOZ_ASSERT(!ins->mir()->hasUses());
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   MWasmAtomicBinopHeap* mir = ins->mir();
   Register ptrReg = ToRegister(ins->ptr());

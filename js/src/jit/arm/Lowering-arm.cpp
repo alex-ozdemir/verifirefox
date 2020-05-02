@@ -70,14 +70,13 @@ void LIRGenerator::visitBox(MBox* box) {
   // of the output, so bypass defineBox().
   uint32_t vreg = getVirtualRegister();
 
-  // Note that because we're using BogusTemp(), we do not change the type of
-  // the definition. We also do not define the first output as "TYPE",
-  // because it has no corresponding payload at (vreg + 1). Also note that
-  // although we copy the input's original type for the payload half of the
-  // definition, this is only for clarity. BogusTemp() definitions are
-  // ignored.
+  // Note that because we're using Bogus(), we do not change the type of the
+  // definition. We also do not define the first output as "TYPE", because it
+  // has no corresponding payload at (vreg + 1). Also note that although we
+  // copy the input's original type for the payload half of the definition, this
+  // is only for clarity. Bogus() definitions are ignored.
   lir->setDef(0, LDefinition(vreg, LDefinition::GENERAL));
-  lir->setDef(1, LDefinition::BogusTemp());
+  lir->setDef(1, LDefinition::Bogus());
   box->setVirtualRegister(vreg);
   add(lir);
 }
@@ -151,8 +150,18 @@ void LIRGeneratorARM::defineInt64Phi(MPhi* phi, size_t lirIndex) {
   uint32_t highVreg = getVirtualRegister();
   MOZ_ASSERT(lowVreg + INT64HIGH_INDEX == highVreg + INT64LOW_INDEX);
 
-  low->setDef(0, LDefinition(lowVreg, LDefinition::INT32));
-  high->setDef(0, LDefinition(highVreg, LDefinition::INT32));
+  LDefinition lowDef(lowVreg, LDefinition::INT32,
+                     LDefinition::MUST_REUSE_INPUT);
+  MOZ_ASSERT(low->numOperands());
+  lowDef.setReusedInput(low->numOperands() - 1);
+  low->setDef(0, lowDef);
+
+  LDefinition highDef(highVreg, LDefinition::int32,
+                      LDefinition::MUST_REUSE_INPUT);
+  MOZ_ASSERT(high->numOperands());
+  highDef.setReusedInput(high->numOperands() - 1);
+  high->setDef(0, highDef);
+
   annotate(high);
   annotate(low);
 }
@@ -571,7 +580,7 @@ void LIRGenerator::visitWasmLoad(MWasmLoad* ins) {
     // Unaligned access expected! Revert to a byte load.
     LDefinition ptrCopy = tempCopy(base, 0);
 
-    LDefinition noTemp = LDefinition::BogusTemp();
+    LDefinition noTemp = LDefinition::Bogus();
     if (ins->type() == MIRType::Int64) {
       auto* lir = new (alloc())
           LWasmUnalignedLoadI64(ptr, ptrCopy, temp(), noTemp, noTemp);
@@ -732,7 +741,7 @@ void LIRGeneratorARM::lowerTruncateDToInt32(MTruncateToInt32* ins) {
   MOZ_ASSERT(opd->type() == MIRType::Double);
 
   define(new (alloc())
-             LTruncateDToInt32(useRegister(opd), LDefinition::BogusTemp()),
+             LTruncateDToInt32(useRegister(opd), LDefinition::Bogus()),
          ins);
 }
 
@@ -741,7 +750,7 @@ void LIRGeneratorARM::lowerTruncateFToInt32(MTruncateToInt32* ins) {
   MOZ_ASSERT(opd->type() == MIRType::Float32);
 
   define(new (alloc())
-             LTruncateFToInt32(useRegister(opd), LDefinition::BogusTemp()),
+             LTruncateFToInt32(useRegister(opd), LDefinition::Bogus()),
          ins);
 }
 
@@ -760,7 +769,7 @@ void LIRGenerator::visitAtomicExchangeTypedArrayElement(
   // CodeGenerator level for creating the result.
 
   const LAllocation value = useRegister(ins->value());
-  LDefinition tempDef = LDefinition::BogusTemp();
+  LDefinition tempDef = LDefinition::Bogus();
   if (ins->arrayType() == Scalar::Uint32) {
     MOZ_ASSERT(ins->type() == MIRType::Double);
     tempDef = temp();
@@ -801,7 +810,7 @@ void LIRGenerator::visitAtomicTypedArrayElementBinop(
   // fit in an instruction.
 
   LDefinition flagTemp = temp();
-  LDefinition outTemp = LDefinition::BogusTemp();
+  LDefinition outTemp = LDefinition::Bogus();
 
   if (ins->arrayType() == Scalar::Uint32 && IsFloatingPointType(ins->type())) {
     outTemp = temp();
@@ -834,7 +843,7 @@ void LIRGenerator::visitCompareExchangeTypedArrayElement(
 
   const LAllocation newval = useRegister(ins->newval());
   const LAllocation oldval = useRegister(ins->oldval());
-  LDefinition tempDef = LDefinition::BogusTemp();
+  LDefinition tempDef = LDefinition::Bogus();
   if (ins->arrayType() == Scalar::Uint32 && IsFloatingPointType(ins->type())) {
     tempDef = temp();
   }
@@ -921,7 +930,7 @@ void LIRGenerator::visitWasmAtomicBinopHeap(MWasmAtomicBinopHeap* ins) {
 
   LWasmAtomicBinopHeap* lir = new (alloc())
       LWasmAtomicBinopHeap(useRegister(base), useRegister(ins->value()),
-                           /* temp = */ LDefinition::BogusTemp(),
+                           /* temp = */ LDefinition::Bogus(),
                            /* flagTemp= */ temp());
   define(lir, ins);
 }

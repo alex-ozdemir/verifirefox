@@ -251,6 +251,5 @@ GeneratedFile('LOpcodes.h',
               entry_point='generate_lir_header',
               inputs=lir_inputs)
 
-DIRS += [
-    'verifier',
-]
+if CONFIG['JS_VERIFIER']:
+    DIRS += ['verifier']

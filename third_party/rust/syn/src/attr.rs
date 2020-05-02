@@ -111,6 +111,43 @@ ast_struct! {
     ///
     /// [`parse_meta()`]: Attribute::parse_meta
     /// [`parse_args()`]: Attribute::parse_args
+    ///
+    /// <p><br></p>
+    ///
+    /// # Doc comments
+    ///
+    /// The compiler transforms doc comments, such as `/// comment` and `/*!
+    /// comment */`, into attributes before macros are expanded. Each comment is
+    /// expanded into an attribute of the form `#[doc = r"comment"]`.
+    ///
+    /// As an example, the following `mod` items are expanded identically:
+    ///
+    /// ```
+    /// # use syn::{ItemMod, parse_quote};
+    /// let doc: ItemMod = parse_quote! {
+    ///     /// Single line doc comments
+    ///     /// We write so many!
+    ///     /**
+    ///      * Multi-line comments...
+    ///      * May span many lines
+    ///      */
+    ///     mod example {
+    ///         //! Of course, they can be inner too
+    ///         /*! And fit in a single line */
+    ///     }
+    /// };
+    /// let attr: ItemMod = parse_quote! {
+    ///     #[doc = r" Single line doc comments"]
+    ///     #[doc = r" We write so many!"]
+    ///     #[doc = r" Multi-line comments...
+    ///  May span many lines"]
+    ///     mod example {
+    ///         #![doc = r" Of course, they can be inner too"]
+    ///         #![doc = r" And fit in a single line "]
+    ///     }
+    /// };
+    /// assert_eq!(doc, attr);
+    /// ```
     pub struct Attribute #manual_extra_traits {
         pub pound_token: Token![#],
         pub style: AttrStyle,
@@ -247,7 +284,7 @@ impl Attribute {
 }
 
 #[cfg(feature = "parsing")]
-fn error_expected_args(attr: &Attribute) -> Error {
+fn expected_parentheses(attr: &Attribute) -> String {
     let style = match attr.style {
         AttrStyle::Outer => "#",
         AttrStyle::Inner(_) => "#!",
@@ -261,19 +298,23 @@ fn error_expected_args(attr: &Attribute) -> Error {
         path += &segment.ident.to_string();
     }
 
-    let msg = format!("expected attribute arguments: {}[{}(...)]", style, path);
-
-    #[cfg(feature = "printing")]
-    return Error::new_spanned(attr, msg);
-
-    #[cfg(not(feature = "printing"))]
-    return Error::new(attr.bracket_token.span, msg);
+    format!("{}[{}(...)]", style, path)
 }
 
 #[cfg(feature = "parsing")]
 fn enter_args<'a>(attr: &Attribute, input: ParseStream<'a>) -> Result<ParseBuffer<'a>> {
     if input.is_empty() {
-        return Err(error_expected_args(attr));
+        let expected = expected_parentheses(attr);
+        let msg = format!("expected attribute arguments in parentheses: {}", expected);
+        return Err(crate::error::new2(
+            attr.pound_token.span,
+            attr.bracket_token.span,
+            msg,
+        ));
+    } else if input.peek(Token![=]) {
+        let expected = expected_parentheses(attr);
+        let msg = format!("expected parentheses: {}", expected);
+        return Err(input.error(msg));
     };
 
     let content;

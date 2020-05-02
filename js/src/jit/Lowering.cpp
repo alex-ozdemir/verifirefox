@@ -623,8 +623,8 @@ void LIRGenerator::visitTest(MTest* test) {
       temp0 = temp();
       temp1 = temp();
     } else {
-      temp0 = LDefinition::BogusTemp();
-      temp1 = LDefinition::BogusTemp();
+      temp0 = LDefinition::Bogus();
+      temp1 = LDefinition::Bogus();
     }
     LTestVAndBranch* lir = new (alloc()) LTestVAndBranch(
         ifTrue, ifFalse, useBox(opd), tempDouble(), temp0, temp1);
@@ -635,7 +635,7 @@ void LIRGenerator::visitTest(MTest* test) {
   if (opd->type() == MIRType::ObjectOrNull) {
     LDefinition temp0 = test->operandMightEmulateUndefined()
                             ? temp()
-                            : LDefinition::BogusTemp();
+                            : LDefinition::Bogus();
     add(new (alloc()) LTestOAndBranch(useRegister(opd), ifTrue, ifFalse, temp0),
         test);
     return;
@@ -731,7 +731,7 @@ void LIRGenerator::visitTest(MTest* test) {
 
         LDefinition tmp = comp->operandMightEmulateUndefined()
                               ? temp()
-                              : LDefinition::BogusTemp();
+                              : LDefinition::Bogus();
         LIsNullOrLikeUndefinedAndBranchT* lir =
             new (alloc()) LIsNullOrLikeUndefinedAndBranchT(
                 comp, useRegister(left), ifTrue, ifFalse, tmp);
@@ -744,8 +744,8 @@ void LIRGenerator::visitTest(MTest* test) {
         tmp = temp();
         tmpToUnbox = tempToUnbox();
       } else {
-        tmp = LDefinition::BogusTemp();
-        tmpToUnbox = LDefinition::BogusTemp();
+        tmp = LDefinition::Bogus();
+        tmpToUnbox = LDefinition::Bogus();
       }
 
       LIsNullOrLikeUndefinedAndBranchV* lir =
@@ -1007,8 +1007,8 @@ void LIRGenerator::visitCompare(MCompare* comp) {
       tmp = temp();
       tmpToUnbox = tempToUnbox();
     } else {
-      tmp = LDefinition::BogusTemp();
-      tmpToUnbox = LDefinition::BogusTemp();
+      tmp = LDefinition::Bogus();
+      tmpToUnbox = LDefinition::Bogus();
     }
 
     LIsNullOrLikeUndefinedV* lir =
@@ -1811,7 +1811,7 @@ void LIRGenerator::visitMod(MMod* ins) {
 
     // Ion does an unaligned ABI call and thus needs a temp register. Wasm
     // doesn't.
-    LDefinition maybeTemp = gen->compilingWasm() ? LDefinition::BogusTemp()
+    LDefinition maybeTemp = gen->compilingWasm() ? LDefinition::Bogus()
                                                  : tempFixed(CallTempReg0);
 
     // Note: useRegisterAtStart is safe here, the temp is not a FP register.
@@ -2688,7 +2688,7 @@ void LIRGenerator::visitTypeBarrier(MTypeBarrier* ins) {
   // Handle typebarrier with Value as input.
   if (inputType == MIRType::Value) {
     LDefinition objTemp =
-        hasSpecificObjects ? temp() : LDefinition::BogusTemp();
+        hasSpecificObjects ? temp() : LDefinition::Bogus();
     if (ins->canRedefineInput()) {
       LTypeBarrierV* barrier = new (alloc())
           LTypeBarrierV(useBox(ins->input()), tempToUnbox(), objTemp);
@@ -2717,7 +2717,7 @@ void LIRGenerator::visitTypeBarrier(MTypeBarrier* ins) {
   }
 
   if (needsObjectBarrier) {
-    LDefinition tmp = hasSpecificObjects ? temp() : LDefinition::BogusTemp();
+    LDefinition tmp = hasSpecificObjects ? temp() : LDefinition::Bogus();
     if (ins->canRedefineInput()) {
       LTypeBarrierO* barrier =
           new (alloc()) LTypeBarrierO(useRegister(ins->input()), tmp);
@@ -2760,7 +2760,7 @@ void LIRGenerator::visitPostWriteBarrier(MPostWriteBarrier* ins) {
     case MIRType::Object:
     case MIRType::ObjectOrNull: {
       LDefinition tmp =
-          needTempForPostBarrier() ? temp() : LDefinition::BogusTemp();
+          needTempForPostBarrier() ? temp() : LDefinition::Bogus();
       LPostWriteBarrierO* lir = new (alloc())
           LPostWriteBarrierO(useConstantObject ? useOrConstant(ins->object())
                                                : useRegister(ins->object()),
@@ -2771,7 +2771,7 @@ void LIRGenerator::visitPostWriteBarrier(MPostWriteBarrier* ins) {
     }
     case MIRType::String: {
       LDefinition tmp =
-          needTempForPostBarrier() ? temp() : LDefinition::BogusTemp();
+          needTempForPostBarrier() ? temp() : LDefinition::Bogus();
       LPostWriteBarrierS* lir = new (alloc())
           LPostWriteBarrierS(useConstantObject ? useOrConstant(ins->object())
                                                : useRegister(ins->object()),
@@ -2782,7 +2782,7 @@ void LIRGenerator::visitPostWriteBarrier(MPostWriteBarrier* ins) {
     }
     case MIRType::BigInt: {
       LDefinition tmp =
-          needTempForPostBarrier() ? temp() : LDefinition::BogusTemp();
+          needTempForPostBarrier() ? temp() : LDefinition::Bogus();
       auto* lir = new (alloc())
           LPostWriteBarrierBI(useConstantObject ? useOrConstant(ins->object())
                                                 : useRegister(ins->object()),
@@ -2793,7 +2793,7 @@ void LIRGenerator::visitPostWriteBarrier(MPostWriteBarrier* ins) {
     }
     case MIRType::Value: {
       LDefinition tmp =
-          needTempForPostBarrier() ? temp() : LDefinition::BogusTemp();
+          needTempForPostBarrier() ? temp() : LDefinition::Bogus();
       LPostWriteBarrierV* lir = new (alloc())
           LPostWriteBarrierV(useConstantObject ? useOrConstant(ins->object())
                                                : useRegister(ins->object()),
@@ -2825,7 +2825,7 @@ void LIRGenerator::visitPostWriteElementBarrier(MPostWriteElementBarrier* ins) {
     case MIRType::Object:
     case MIRType::ObjectOrNull: {
       LDefinition tmp =
-          needTempForPostBarrier() ? temp() : LDefinition::BogusTemp();
+          needTempForPostBarrier() ? temp() : LDefinition::Bogus();
       LPostWriteElementBarrierO* lir = new (alloc()) LPostWriteElementBarrierO(
           useConstantObject ? useOrConstant(ins->object())
                             : useRegister(ins->object()),
@@ -2836,7 +2836,7 @@ void LIRGenerator::visitPostWriteElementBarrier(MPostWriteElementBarrier* ins) {
     }
     case MIRType::String: {
       LDefinition tmp =
-          needTempForPostBarrier() ? temp() : LDefinition::BogusTemp();
+          needTempForPostBarrier() ? temp() : LDefinition::Bogus();
       LPostWriteElementBarrierS* lir = new (alloc()) LPostWriteElementBarrierS(
           useConstantObject ? useOrConstant(ins->object())
                             : useRegister(ins->object()),
@@ -2847,7 +2847,7 @@ void LIRGenerator::visitPostWriteElementBarrier(MPostWriteElementBarrier* ins) {
     }
     case MIRType::BigInt: {
       LDefinition tmp =
-          needTempForPostBarrier() ? temp() : LDefinition::BogusTemp();
+          needTempForPostBarrier() ? temp() : LDefinition::Bogus();
       auto* lir = new (alloc()) LPostWriteElementBarrierBI(
           useConstantObject ? useOrConstant(ins->object())
                             : useRegister(ins->object()),
@@ -2858,7 +2858,7 @@ void LIRGenerator::visitPostWriteElementBarrier(MPostWriteElementBarrier* ins) {
     }
     case MIRType::Value: {
       LDefinition tmp =
-          needTempForPostBarrier() ? temp() : LDefinition::BogusTemp();
+          needTempForPostBarrier() ? temp() : LDefinition::Bogus();
       LPostWriteElementBarrierV* lir = new (alloc()) LPostWriteElementBarrierV(
           useConstantObject ? useOrConstant(ins->object())
                             : useRegister(ins->object()),
@@ -3016,8 +3016,8 @@ void LIRGenerator::visitNot(MNot* ins) {
         temp0 = temp();
         temp1 = temp();
       } else {
-        temp0 = LDefinition::BogusTemp();
-        temp1 = LDefinition::BogusTemp();
+        temp0 = LDefinition::Bogus();
+        temp1 = LDefinition::Bogus();
       }
 
       LNotV* lir = new (alloc()) LNotV(useBox(op), tempDouble(), temp0, temp1);
@@ -3172,7 +3172,7 @@ void LIRGenerator::visitLoadUnboxedString(MLoadUnboxedString* ins) {
 void LIRGenerator::visitLoadElementFromState(MLoadElementFromState* ins) {
   MOZ_ASSERT(ins->index()->type() == MIRType::Int32);
 
-  LDefinition temp1 = LDefinition::BogusTemp();
+  LDefinition temp1 = LDefinition::Bogus();
 #ifdef JS_NUNBOX32
   temp1 = temp();
 #endif
@@ -3291,7 +3291,7 @@ void LIRGenerator::visitStoreElementHole(MStoreElementHole* ins) {
   const LAllocation index = useRegister(ins->index());
 
   LDefinition spectreTemp =
-      BoundsCheckNeedsSpectreTemp() ? temp() : LDefinition::BogusTemp();
+      BoundsCheckNeedsSpectreTemp() ? temp() : LDefinition::Bogus();
 
   LInstruction* lir;
   switch (ins->value()->type()) {
@@ -3321,7 +3321,7 @@ void LIRGenerator::visitFallibleStoreElement(MFallibleStoreElement* ins) {
   const LAllocation index = useRegister(ins->index());
 
   LDefinition spectreTemp =
-      BoundsCheckNeedsSpectreTemp() ? temp() : LDefinition::BogusTemp();
+      BoundsCheckNeedsSpectreTemp() ? temp() : LDefinition::Bogus();
 
   LInstruction* lir;
   switch (ins->value()->type()) {
@@ -3408,7 +3408,7 @@ void LIRGenerator::visitArrayPush(MArrayPush* ins) {
   LUse object = useRegister(ins->object());
 
   LDefinition spectreTemp =
-      BoundsCheckNeedsSpectreTemp() ? temp() : LDefinition::BogusTemp();
+      BoundsCheckNeedsSpectreTemp() ? temp() : LDefinition::Bogus();
 
   switch (ins->value()->type()) {
     case MIRType::Value: {
@@ -3450,7 +3450,7 @@ void LIRGenerator::visitArrayJoin(MArrayJoin* ins) {
   MOZ_ASSERT(ins->array()->type() == MIRType::Object);
   MOZ_ASSERT(ins->sep()->type() == MIRType::String);
 
-  LDefinition tempDef = LDefinition::BogusTemp();
+  LDefinition tempDef = LDefinition::Bogus();
   if (ins->optimizeForArray()) {
     tempDef = temp();
   }
@@ -3483,7 +3483,7 @@ void LIRGenerator::visitLoadUnboxedScalar(MLoadUnboxedScalar* ins) {
   MOZ_ASSERT(IsNumberType(ins->type()) || ins->type() == MIRType::Boolean);
 
   // We need a temp register for Uint32Array with known double result.
-  LDefinition tempDef = LDefinition::BogusTemp();
+  LDefinition tempDef = LDefinition::Bogus();
   if (ins->readType() == Scalar::Uint32 && IsFloatingPointType(ins->type())) {
     tempDef = temp();
   }
@@ -3626,7 +3626,7 @@ void LIRGenerator::visitStoreTypedArrayElementHole(
   }
 
   LDefinition spectreTemp =
-      BoundsCheckNeedsSpectreTemp() ? temp() : LDefinition::BogusTemp();
+      BoundsCheckNeedsSpectreTemp() ? temp() : LDefinition::Bogus();
   auto* lir = new (alloc())
       LStoreTypedArrayElementHole(elements, length, index, value, spectreTemp);
   add(lir, ins);
@@ -3734,7 +3734,7 @@ void LIRGenerator::visitGetPropertyCache(MGetPropertyCache* ins) {
 
   // We need a temp register if we can't use the output register as scratch.
   // See IonIC::scratchRegisterForEntryJump.
-  LDefinition maybeTemp = LDefinition::BogusTemp();
+  LDefinition maybeTemp = LDefinition::Bogus();
   if (ins->type() == MIRType::Double) {
     maybeTemp = temp();
   }
@@ -3824,7 +3824,7 @@ void LIRGenerator::visitGuardShape(MGuardShape* ins) {
     defineReuseInput(lir, ins, 0);
   } else {
     auto* lir = new (alloc())
-        LGuardShape(useRegister(ins->object()), LDefinition::BogusTemp());
+        LGuardShape(useRegister(ins->object()), LDefinition::Bogus());
     assignSnapshot(lir, ins->bailoutKind());
     add(lir, ins);
     redefine(ins, ins->object());
@@ -3841,7 +3841,7 @@ void LIRGenerator::visitGuardObjectGroup(MGuardObjectGroup* ins) {
     defineReuseInput(lir, ins, 0);
   } else {
     auto* lir = new (alloc())
-        LGuardObjectGroup(useRegister(ins->object()), LDefinition::BogusTemp());
+        LGuardObjectGroup(useRegister(ins->object()), LDefinition::Bogus());
     assignSnapshot(lir, ins->bailoutKind());
     add(lir, ins);
     redefine(ins, ins->object());
@@ -3984,7 +3984,7 @@ void LIRGenerator::visitSetPropertyCache(MSetPropertyCache* ins) {
 
   // We need a double temp register for typed array stubs if this is a SetElem
   // or InitElem op.
-  LDefinition tempD = LDefinition::BogusTemp();
+  LDefinition tempD = LDefinition::Bogus();
   if (IsElemPC(ins->resumePoint()->pc())) {
     tempD = tempFixed(FloatReg0);
   }
@@ -5066,7 +5066,7 @@ void LIRGenerator::visitIonToWasmCall(MIonToWasmCall* ins) {
   // Also prevent register allocation from using wasm's FramePointer, in
   // non-profiling mode.
   LDefinition fp = gen->isProfilerInstrumentationEnabled()
-                       ? LDefinition::BogusTemp()
+                       ? LDefinition::Bogus()
                        : tempFixed(FramePointer);
 
   // Note that since this is a LIR call instruction, regalloc will prevent

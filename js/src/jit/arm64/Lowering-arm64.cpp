@@ -355,7 +355,7 @@ void LIRGeneratorARM64::lowerUDiv(MDiv* div) {
 
   // Generate UDiv
   LAllocation rhs = useRegister(div->rhs());
-  LDefinition remainder = LDefinition::BogusTemp();
+  LDefinition remainder = LDefinition::Bogus();
   if (!div->canTruncateRemainder()) {
     remainder = temp();
   }
@@ -408,7 +408,7 @@ void LIRGeneratorARM64::lowerTruncateDToInt32(MTruncateToInt32* ins) {
   MDefinition* opd = ins->input();
   MOZ_ASSERT(opd->type() == MIRType::Double);
   define(new (alloc())
-             LTruncateDToInt32(useRegister(opd), LDefinition::BogusTemp()),
+             LTruncateDToInt32(useRegister(opd), LDefinition::Bogus()),
          ins);
 }
 
@@ -416,7 +416,7 @@ void LIRGeneratorARM64::lowerTruncateFToInt32(MTruncateToInt32* ins) {
   MDefinition* opd = ins->input();
   MOZ_ASSERT(opd->type() == MIRType::Float32);
   define(new (alloc())
-             LTruncateFToInt32(useRegister(opd), LDefinition::BogusTemp()),
+             LTruncateFToInt32(useRegister(opd), LDefinition::Bogus()),
          ins);
 }
 
@@ -435,7 +435,7 @@ void LIRGenerator::visitAtomicTypedArrayElementBinop(
   LAllocation value = useRegister(ins->value());
 
   LDefinition tempDef1 = temp();
-  LDefinition tempDef2 = LDefinition::BogusTemp();
+  LDefinition tempDef2 = LDefinition::Bogus();
   if (ins->arrayType() == Scalar::Uint32) {
     tempDef2 = temp();
   }
@@ -463,7 +463,7 @@ void LIRGenerator::visitCompareExchangeTypedArrayElement(
   const LAllocation newval = useRegister(ins->newval());
   const LAllocation oldval = useRegister(ins->oldval());
 
-  LDefinition outTemp = LDefinition::BogusTemp();
+  LDefinition outTemp = LDefinition::Bogus();
   if (ins->arrayType() == Scalar::Uint32) {
     outTemp = temp();
   }
@@ -486,7 +486,7 @@ void LIRGenerator::visitAtomicExchangeTypedArrayElement(
   const LAllocation index = useRegisterOrConstant(ins->index());
   const LAllocation value = useRegister(ins->value());
 
-  LDefinition tempDef = LDefinition::BogusTemp();
+  LDefinition tempDef = LDefinition::Bogus();
   if (ins->arrayType() == Scalar::Uint32) {
     tempDef = temp();
   }

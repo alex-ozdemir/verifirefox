@@ -439,7 +439,7 @@ void LIRGeneratorX86Shared::lowerTruncateDToInt32(MTruncateToInt32* ins) {
   MOZ_ASSERT(opd->type() == MIRType::Double);
 
   LDefinition maybeTemp =
-      Assembler::HasSSE3() ? LDefinition::BogusTemp() : tempDouble();
+      Assembler::HasSSE3() ? LDefinition::Bogus() : tempDouble();
   define(new (alloc()) LTruncateDToInt32(useRegister(opd), maybeTemp), ins);
 }
 
@@ -448,7 +448,7 @@ void LIRGeneratorX86Shared::lowerTruncateFToInt32(MTruncateToInt32* ins) {
   MOZ_ASSERT(opd->type() == MIRType::Float32);
 
   LDefinition maybeTemp =
-      Assembler::HasSSE3() ? LDefinition::BogusTemp() : tempFloat32();
+      Assembler::HasSSE3() ? LDefinition::Bogus() : tempFloat32();
   define(new (alloc()) LTruncateFToInt32(useRegister(opd), maybeTemp), ins);
 }
 
@@ -479,7 +479,7 @@ void LIRGeneratorX86Shared::lowerCompareExchangeTypedArrayElement(
   // Bug #1077036 describes some further optimization opportunities.
 
   bool fixedOutput = false;
-  LDefinition tempDef = LDefinition::BogusTemp();
+  LDefinition tempDef = LDefinition::Bogus();
   LAllocation newval;
   if (ins->arrayType() == Scalar::Uint32 && IsFloatingPointType(ins->type())) {
     tempDef = tempFixed(eax);
@@ -527,7 +527,7 @@ void LIRGeneratorX86Shared::lowerAtomicExchangeTypedArrayElement(
   // a byte size; in this case -- on x86 only -- pin the output to
   // an appropriate register and use that as a temp in the back-end.
 
-  LDefinition tempDef = LDefinition::BogusTemp();
+  LDefinition tempDef = LDefinition::Bogus();
   if (ins->arrayType() == Scalar::Uint32) {
     // This restriction is bug 1077305.
     MOZ_ASSERT(ins->type() == MIRType::Double);
@@ -615,8 +615,8 @@ void LIRGeneratorX86Shared::lowerAtomicTypedArrayElementBinop(
                  ins->operation() == AtomicFetchSubOp);
   bool fixedOutput = true;
   bool reuseInput = false;
-  LDefinition tempDef1 = LDefinition::BogusTemp();
-  LDefinition tempDef2 = LDefinition::BogusTemp();
+  LDefinition tempDef1 = LDefinition::Bogus();
+  LDefinition tempDef2 = LDefinition::Bogus();
   LAllocation value;
 
   if (ins->arrayType() == Scalar::Uint32 && IsFloatingPointType(ins->type())) {

@@ -67,14 +67,13 @@ void LIRGenerator::visitBox(MBox* box) {
   // of the output, so bypass defineBox().
   uint32_t vreg = getVirtualRegister();
 
-  // Note that because we're using BogusTemp(), we do not change the type of
-  // the definition. We also do not define the first output as "TYPE",
-  // because it has no corresponding payload at (vreg + 1). Also note that
-  // although we copy the input's original type for the payload half of the
-  // definition, this is only for clarity. BogusTemp() definitions are
-  // ignored.
+  // Note that because we're using Bogus(), we do not change the type of the
+  // definition. We also do not define the first output as "TYPE", because it
+  // has no corresponding payload at (vreg + 1). Also note that although we copy
+  // the input's original type for the payload half of the definition, this is
+  // only for clarity. Bogus() definitions are ignored.
   lir->setDef(0, LDefinition(vreg, LDefinition::GENERAL));
-  lir->setDef(1, LDefinition::BogusTemp());
+  lir->setDef(1, LDefinition::Bogus());
   box->setVirtualRegister(vreg);
   add(lir);
 }
@@ -505,7 +504,7 @@ void LIRGenerator::visitWasmAtomicBinopHeap(MWasmAtomicBinopHeap* ins) {
     }
     LWasmAtomicBinopHeapForEffect* lir =
         new (alloc()) LWasmAtomicBinopHeapForEffect(useRegister(base), value,
-                                                    LDefinition::BogusTemp(),
+                                                    LDefinition::Bogus(),
                                                     useRegister(memoryBase));
     lir->setAddrTemp(temp());
     add(lir, ins);
@@ -547,7 +546,7 @@ void LIRGenerator::visitWasmAtomicBinopHeap(MWasmAtomicBinopHeap* ins) {
 
   bool bitOp = !(ins->operation() == AtomicFetchAddOp ||
                  ins->operation() == AtomicFetchSubOp);
-  LDefinition tempDef = LDefinition::BogusTemp();
+  LDefinition tempDef = LDefinition::Bogus();
   LAllocation value;
 
   if (byteArray) {
@@ -566,7 +565,7 @@ void LIRGenerator::visitWasmAtomicBinopHeap(MWasmAtomicBinopHeap* ins) {
 
   LWasmAtomicBinopHeap* lir = new (alloc())
       LWasmAtomicBinopHeap(useRegister(base), value, tempDef,
-                           LDefinition::BogusTemp(), useRegister(memoryBase));
+                           LDefinition::Bogus(), useRegister(memoryBase));
 
   lir->setAddrTemp(temp());
   if (byteArray || bitOp) {
@@ -622,7 +621,7 @@ void LIRGenerator::visitSubstr(MSubstr* ins) {
   // bugos temporary as fifth argument.
   LSubstr* lir = new (alloc())
       LSubstr(useRegister(ins->string()), useRegister(ins->begin()),
-              useRegister(ins->length()), temp(), LDefinition::BogusTemp(),
+              useRegister(ins->length()), temp(), LDefinition::Bogus(),
               tempByteOpRegister());
   define(lir, ins);
   assignSafepoint(lir, ins);
@@ -651,7 +650,7 @@ void LIRGenerator::visitInt64ToFloatingPoint(MInt64ToFloatingPoint* ins) {
        ((ins->type() == MIRType::Double && AssemblerX86Shared::HasSSE3()) ||
         ins->type() == MIRType::Float32))
           ? temp()
-          : LDefinition::BogusTemp();
+          : LDefinition::Bogus();
 
   define(new (alloc()) LInt64ToFloatingPoint(useInt64Register(opd), maybeTemp),
          ins);

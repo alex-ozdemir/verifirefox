@@ -79,7 +79,13 @@ void LIRGeneratorShared::definePhiOneRegister(MPhi* phi, size_t lirIndex) {
   uint32_t vreg = getVirtualRegister();
 
   phi->setVirtualRegister(vreg);
-  lir->setDef(0, LDefinition(vreg, LDefinition::TypeFrom(phi->type())));
+
+  LDefinition def(vreg, LDefinition::TypeFrom(phi->type()),
+                  LDefinition::MUST_REUSE_INPUT);
+  MOZ_ASSERT(lir->numOperands());
+  def.setReusedInput(lir->numOperands() - 1);
+  lir->setDef(0, def);
+
   annotate(lir);
 }
 
@@ -94,8 +100,17 @@ void LIRGeneratorShared::definePhiTwoRegisters(MPhi* phi, size_t lirIndex) {
   uint32_t payloadVreg = getVirtualRegister();
   MOZ_ASSERT(typeVreg + 1 == payloadVreg);
 
-  type->setDef(0, LDefinition(typeVreg, LDefinition::TYPE));
-  payload->setDef(0, LDefinition(payloadVreg, LDefinition::PAYLOAD));
+  LDefinition typeDef(vreg, LDefinition::TYPE, LDefinition::MUST_REUSE_INPUT);
+  MOZ_ASSERT(type->numOperands());
+  typeDef.setReusedInput(type->numOperands() - 1);
+  type->setDef(0, typeDef);
+
+  LDefinition payloadDef(vreg, LDefinition::PAYLOAD,
+                         LDefinition::MUST_REUSE_INPUT);
+  MOZ_ASSERT(payload->numOperands());
+  payloadDef.setReusedInput(payload->numOperands() - 1);
+  payload->setDef(0, payloadDef);
+
   annotate(type);
   annotate(payload);
 }

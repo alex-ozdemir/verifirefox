@@ -88,7 +88,6 @@
 //! [Printing]: https://docs.rs/quote/1.0/quote/trait.ToTokens.html
 //! [`Span`]: https://docs.rs/proc-macro2/1.0/proc_macro2/struct.Span.html
 
-use std;
 #[cfg(feature = "extra-traits")]
 use std::cmp;
 #[cfg(feature = "extra-traits")]
@@ -158,11 +157,12 @@ impl private::Sealed for Ident {}
 #[cfg(any(feature = "full", feature = "derive"))]
 #[cfg(feature = "parsing")]
 fn peek_impl(cursor: Cursor, peek: fn(ParseStream) -> bool) -> bool {
+    use crate::parse::Unexpected;
     use std::cell::Cell;
     use std::rc::Rc;
 
     let scope = Span::call_site();
-    let unexpected = Rc::new(Cell::new(None));
+    let unexpected = Rc::new(Cell::new(Unexpected::None));
     let buffer = crate::parse::new_parse_buffer(scope, cursor, unexpected);
     peek(&buffer)
 }
@@ -855,7 +855,7 @@ pub mod parsing {
     }
 
     pub fn punct<S: FromSpans>(input: ParseStream, token: &str) -> Result<S> {
-        let mut spans = [input.cursor().span(); 3];
+        let mut spans = [input.span(); 3];
         punct_helper(input, token, &mut spans)?;
         Ok(S::from_spans(&spans))
     }

@@ -212,7 +212,7 @@ class LWasmUnalignedLoadBase : public details::LWasmLoadBase<NumDefs, 2> {
   explicit LWasmUnalignedLoadBase(LNode::Opcode opcode, const LAllocation& ptr,
                                   const LDefinition& valueHelper)
       : Base(opcode, ptr, LAllocation()) {
-    Base::setTemp(0, LDefinition::BogusTemp());
+    Base::setTemp(0, LDefinition::Bogus());
     Base::setTemp(1, valueHelper);
   }
 
@@ -256,7 +256,7 @@ class LWasmUnalignedStoreBase : public LInstructionHelper<0, NumOps, 2> {
                           const LDefinition& valueHelper)
       : Base(opcode) {
     Base::setOperand(0, ptr);
-    Base::setTemp(0, LDefinition::BogusTemp());
+    Base::setTemp(0, LDefinition::Bogus());
     Base::setTemp(1, valueHelper);
   }
 

@@ -60,7 +60,7 @@ bool AllocationIntegrityState::record() {
       InstructionInfo& info = instructions[ins->id()];
 
       for (size_t k = 0; k < ins->numTemps(); k++) {
-        if (!ins->getTemp(k)->isBogusTemp()) {
+        if (!ins->getTemp(k)->isBogus()) {
           uint32_t vreg = ins->getTemp(k)->virtualRegister();
           virtualRegisters[vreg] = ins->getTemp(k);
         }
@@ -69,7 +69,7 @@ bool AllocationIntegrityState::record() {
         }
       }
       for (size_t k = 0; k < ins->numDefs(); k++) {
-        if (!ins->getDef(k)->isBogusTemp()) {
+        if (!ins->getDef(k)->isBogus()) {
           uint32_t vreg = ins->getDef(k)->virtualRegister();
           virtualRegisters[vreg] = ins->getDef(k);
         }
@@ -124,7 +124,7 @@ bool AllocationIntegrityState::check(bool populateSafepoints) {
 
       for (size_t i = 0; i < ins->numTemps(); i++) {
         LDefinition* temp = ins->getTemp(i);
-        MOZ_ASSERT_IF(!temp->isBogusTemp(), temp->output()->isRegister());
+        MOZ_ASSERT_IF(!temp->isBogus(), temp->output()->isRegister());
 
         LDefinition oldTemp = instructions[ins->id()].temps[i];
         MOZ_ASSERT_IF(
@@ -154,7 +154,7 @@ bool AllocationIntegrityState::check(bool populateSafepoints) {
       LSafepoint* safepoint = ins->safepoint();
       if (safepoint) {
         for (size_t i = 0; i < ins->numTemps(); i++) {
-          if (ins->getTemp(i)->isBogusTemp()) {
+          if (ins->getTemp(i)->isBogus()) {
             continue;
           }
           uint32_t vreg = info.temps[i].virtualRegister();
@@ -236,7 +236,7 @@ bool AllocationIntegrityState::checkIntegrity(LBlock* block, LInstruction* ins,
 
     for (size_t i = 0; i < ins->numDefs(); i++) {
       LDefinition* def = ins->getDef(i);
-      if (def->isBogusTemp()) {
+      if (def->isBogus()) {
         continue;
       }
       if (info.outputs[i].virtualRegister() == vreg) {
@@ -251,7 +251,7 @@ bool AllocationIntegrityState::checkIntegrity(LBlock* block, LInstruction* ins,
 
     for (size_t i = 0; i < ins->numTemps(); i++) {
       LDefinition* temp = ins->getTemp(i);
-      if (!temp->isBogusTemp()) {
+      if (!temp->isBogus()) {
         MOZ_ASSERT(*temp->output() != alloc);
       }
     }
@@ -464,12 +464,15 @@ void AllocationIntegrityState::dump() {
       }
 
       for (size_t i = 0; i < ins->numDefs(); i++) {
-        fprintf(stderr, " [def %s]", ins->getDef(i)->toString().get());
+        LDefinition* def = ins->getDef(i);
+        if (!def->isBogus()) {
+          fprintf(stderr, " [def %s]", def->toString().get());
+        }
       }
 
       for (size_t i = 0; i < ins->numTemps(); i++) {
         LDefinition* temp = ins->getTemp(i);
-        if (!temp->isBogusTemp()) {
+        if (!temp->isBogus()) {
           fprintf(stderr, " [temp v%u %s]", info.temps[i].virtualRegister(),
                   temp->toString().get());
         }
@@ -659,12 +662,15 @@ void RegisterAllocator::dumpInstructions() {
       }
 
       for (size_t i = 0; i < ins->numDefs(); i++) {
-        fprintf(stderr, " [def %s]", ins->getDef(i)->toString().get());
+        LDefinition* def = ins->getDef(i);
+        if (!def->isBogus()) {
+          fprintf(stderr, " [def %s]", def->toString().get());
+        }
       }
 
       for (size_t i = 0; i < ins->numTemps(); i++) {
         LDefinition* temp = ins->getTemp(i);
-        if (!temp->isBogusTemp()) {
+        if (!temp->isBogus()) {
           fprintf(stderr, " [temp %s]", temp->toString().get());
         }
       }

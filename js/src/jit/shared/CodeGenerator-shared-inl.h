@@ -108,7 +108,7 @@ static inline Register64 ToRegister64(const LInt64Allocation& a) {
 }
 
 static inline Register ToTempRegisterOrInvalid(const LDefinition* def) {
-  if (def->isBogusTemp()) {
+  if (def->isBogus()) {
     return InvalidReg;
   }
   return ToRegister(def);
@@ -137,7 +137,7 @@ static inline FloatRegister ToFloatRegister(const LDefinition* def) {
 
 static inline FloatRegister ToTempFloatRegisterOrInvalid(
     const LDefinition* def) {
-  if (def->isBogusTemp()) {
+  if (def->isBogus()) {
     return InvalidFloatReg;
   }
   return ToFloatRegister(def);

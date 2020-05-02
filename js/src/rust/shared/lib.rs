@@ -15,7 +15,9 @@
 #[cfg(feature = "baldrdash")]
 extern crate baldrdash;
 
+#[cfg(feature = "verifirefox")]
+extern crate verifirefox;
+
 extern crate encoding_c;
 extern crate encoding_c_mem;
 extern crate mozglue_static;
-extern crate verifirefox;

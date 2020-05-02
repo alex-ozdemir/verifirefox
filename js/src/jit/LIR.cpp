@@ -142,12 +142,14 @@ const LInstruction* LBlock::firstInstructionWithId() const {
 }
 
 void LBlock::insertAfter(LInstruction* at, LInstruction* ins) {
+  ins->setBlock(this);
   instructions_.insertAfter(at, ins);
   if (!ins->id()) {
     ins->setId(graph_->getInstructionId());
   }
 }
 void LBlock::insertBefore(LInstruction* at, LInstruction* ins) {
+  ins->setBlock(this);
   instructions_.insertBefore(at, ins);
   if (!ins->id()) {
     ins->setId(graph_->getInstructionId());
@@ -381,7 +383,7 @@ UniqueChars LDefinition::toString() const {
   AutoEnterOOMUnsafeRegion oomUnsafe;
 
   UniqueChars buf;
-  if (isBogusTemp()) {
+  if (isBogus()) {
     buf = JS_smprintf("bogus");
   } else {
     buf = JS_smprintf("v%u<%s>", virtualRegister(), DefTypeName(type()));
@@ -551,6 +553,8 @@ MBasicBlock* LInstruction::getSuccessor(size_t index) const {
 
 #ifdef JS_JITSPEW
 void LNode::dump(GenericPrinter& out) {
+  out.printf("[%" PRIu32 "]: ", id());
+
   if (numDefs() != 0) {
     out.printf("{");
     for (size_t i = 0; i < numDefs(); i++) {

@@ -242,7 +242,7 @@
 //!   dynamic library libproc_macro from rustc toolchain.
 
 // Syn types in rustdoc of other crates get linked to here.
-#![doc(html_root_url = "https://docs.rs/syn/1.0.5")]
+#![doc(html_root_url = "https://docs.rs/syn/1.0.17")]
 #![deny(clippy::all, clippy::pedantic)]
 // Ignored clippy lints.
 #![allow(
@@ -252,6 +252,7 @@
     clippy::eval_order_dependence,
     clippy::inherent_to_string,
     clippy::large_enum_variant,
+    clippy::needless_doctest_main,
     clippy::needless_pass_by_value,
     clippy::never_loop,
     clippy::suspicious_op_assign_impl,
@@ -264,10 +265,14 @@
     clippy::empty_enum,
     clippy::if_not_else,
     clippy::items_after_statements,
+    clippy::match_same_arms,
+    clippy::missing_errors_doc,
     clippy::module_name_repetitions,
+    clippy::must_use_candidate,
     clippy::shadow_unrelated,
     clippy::similar_names,
     clippy::single_match_else,
+    clippy::too_many_lines,
     clippy::unseparated_literal_suffix,
     clippy::use_self,
     clippy::used_underscore_binding
@@ -284,7 +289,6 @@ extern crate unicode_xid;
 #[cfg(feature = "printing")]
 extern crate quote;
 
-#[cfg(any(feature = "full", feature = "derive"))]
 #[macro_use]
 mod macros;
 
@@ -307,7 +311,6 @@ pub use crate::attr::{
     AttrStyle, Attribute, AttributeArgs, Meta, MetaList, MetaNameValue, NestedMeta,
 };
 
-#[cfg(any(feature = "full", feature = "derive"))]
 mod bigint;
 
 #[cfg(any(feature = "full", feature = "derive"))]
@@ -364,9 +367,7 @@ pub use crate::file::File;
 mod lifetime;
 pub use crate::lifetime::Lifetime;
 
-#[cfg(any(feature = "full", feature = "derive"))]
 mod lit;
-#[cfg(any(feature = "full", feature = "derive"))]
 pub use crate::lit::{
     Lit, LitBool, LitByte, LitByteStr, LitChar, LitFloat, LitInt, LitStr, StrStyle,
 };
@@ -757,6 +758,8 @@ pub mod export;
 mod custom_keyword;
 mod custom_punctuation;
 mod sealed;
+mod span;
+mod thread;
 
 #[cfg(feature = "parsing")]
 mod lookahead;
@@ -764,12 +767,11 @@ mod lookahead;
 #[cfg(feature = "parsing")]
 pub mod parse;
 
-mod span;
+#[cfg(all(feature = "parsing", feature = "full"))]
+mod verbatim;
 
 #[cfg(all(any(feature = "full", feature = "derive"), feature = "printing"))]
 mod print;
-
-mod thread;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -874,9 +876,7 @@ pub fn parse2<T: parse::Parse>(tokens: proc_macro2::TokenStream) -> Result<T> {
 ///     Ok(())
 /// }
 /// #
-/// # fn main() {
-/// #     run().unwrap();
-/// # }
+/// # run().unwrap();
 /// ```
 #[cfg(feature = "parsing")]
 pub fn parse_str<T: parse::Parse>(s: &str) -> Result<T> {
@@ -918,9 +918,7 @@ pub fn parse_str<T: parse::Parse>(s: &str) -> Result<T> {
 ///     Ok(())
 /// }
 /// #
-/// # fn main() {
-/// #     run().unwrap();
-/// # }
+/// # run().unwrap();
 /// ```
 #[cfg(all(feature = "parsing", feature = "full"))]
 pub fn parse_file(mut content: &str) -> Result<File> {

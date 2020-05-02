@@ -21,7 +21,7 @@ class LIRGeneratorMIPS : public LIRGeneratorMIPSShared {
   LBoxAllocation useBoxFixed(MDefinition* mir, Register reg1, Register reg2,
                              bool useAtStart = false);
 
-  inline LDefinition tempToUnbox() { return LDefinition::BogusTemp(); }
+  inline LDefinition tempToUnbox() { return LDefinition::Bogus(); }
 
   void lowerUntypedPhiInput(MPhi* phi, uint32_t inputPosition, LBlock* block,
                             size_t lirIndex);

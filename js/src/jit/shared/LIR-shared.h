@@ -690,7 +690,7 @@ class LRotateI64
   LIR_HEADER(RotateI64);
 
   LRotateI64() : RotateBase(classOpcode) {
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
   }
 
   static const size_t Input = 0;
@@ -4643,7 +4643,7 @@ class LAtomicTypedArrayElementBinop : public LInstructionHelper<1, 3, 5> {
     setOperand(0, elements);
     setOperand(1, index);
     setOperand(2, value);
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
     setTemp(1, temp2);
     setTemp(2, valueTemp);
     setTemp(3, offsetTemp);
@@ -4679,7 +4679,7 @@ class LAtomicTypedArrayElementBinopForEffect
   LAtomicTypedArrayElementBinopForEffect(
       const LAllocation& elements, const LAllocation& index,
       const LAllocation& value,
-      const LDefinition& flagTemp = LDefinition::BogusTemp())
+      const LDefinition& flagTemp = LDefinition::Bogus())
       : LInstructionHelper(classOpcode) {
     setOperand(0, elements);
     setOperand(1, index);
@@ -4697,7 +4697,7 @@ class LAtomicTypedArrayElementBinopForEffect
     setOperand(0, elements);
     setOperand(1, index);
     setOperand(2, value);
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
     setTemp(1, valueTemp);
     setTemp(2, offsetTemp);
     setTemp(3, maskTemp);
@@ -6356,7 +6356,7 @@ class LWasmLoad : public details::LWasmLoadBase<1, 1> {
   explicit LWasmLoad(const LAllocation& ptr,
                      const LAllocation& memoryBase = LAllocation())
       : LWasmLoadBase(classOpcode, ptr, memoryBase) {
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
   }
 
   const LDefinition* ptrCopy() { return Base::getTemp(0); }
@@ -6369,7 +6369,7 @@ class LWasmLoadI64 : public details::LWasmLoadBase<INT64_PIECES, 1> {
   explicit LWasmLoadI64(const LAllocation& ptr,
                         const LAllocation& memoryBase = LAllocation())
       : LWasmLoadBase(classOpcode, ptr, memoryBase) {
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
   }
 
   const LDefinition* ptrCopy() { return Base::getTemp(0); }
@@ -6391,7 +6391,7 @@ class LWasmStore : public LInstructionHelper<0, 3, 1> {
     setOperand(PtrIndex, ptr);
     setOperand(ValueIndex, value);
     setOperand(MemoryBaseIndex, memoryBase);
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
   }
   MWasmStore* mir() const { return mir_->toWasmStore(); }
   const LAllocation* ptr() { return getOperand(PtrIndex); }
@@ -6414,7 +6414,7 @@ class LWasmStoreI64 : public LInstructionHelper<0, INT64_PIECES + 2, 1> {
     setOperand(PtrIndex, ptr);
     setOperand(MemoryBaseIndex, memoryBase);
     setInt64Operand(ValueIndex, value);
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
   }
   MWasmStore* mir() const { return mir_->toWasmStore(); }
   const LAllocation* ptr() { return getOperand(PtrIndex); }
@@ -6472,7 +6472,7 @@ class LWasmCompareExchangeHeap : public LInstructionHelper<1, 4, 4> {
     setOperand(1, oldValue);
     setOperand(2, newValue);
     setOperand(3, memoryBase);
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
   }
   // MIPS32, MIPS64
   LWasmCompareExchangeHeap(const LAllocation& ptr, const LAllocation& oldValue,
@@ -6485,7 +6485,7 @@ class LWasmCompareExchangeHeap : public LInstructionHelper<1, 4, 4> {
     setOperand(1, oldValue);
     setOperand(2, newValue);
     setOperand(3, LAllocation());
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
     setTemp(1, valueTemp);
     setTemp(2, offsetTemp);
     setTemp(3, maskTemp);
@@ -6526,7 +6526,7 @@ class LWasmAtomicExchangeHeap : public LInstructionHelper<1, 3, 4> {
     setOperand(0, ptr);
     setOperand(1, value);
     setOperand(2, memoryBase);
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
   }
   // MIPS32, MIPS64
   LWasmAtomicExchangeHeap(const LAllocation& ptr, const LAllocation& value,
@@ -6537,7 +6537,7 @@ class LWasmAtomicExchangeHeap : public LInstructionHelper<1, 3, 4> {
     setOperand(0, ptr);
     setOperand(1, value);
     setOperand(2, LAllocation());
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
     setTemp(1, valueTemp);
     setTemp(2, offsetTemp);
     setTemp(3, maskTemp);
@@ -6569,14 +6569,14 @@ class LWasmAtomicBinopHeap : public LInstructionHelper<1, 3, 6> {
   // ARM, ARM64, x86, x64
   LWasmAtomicBinopHeap(const LAllocation& ptr, const LAllocation& value,
                        const LDefinition& temp,
-                       const LDefinition& flagTemp = LDefinition::BogusTemp(),
+                       const LDefinition& flagTemp = LDefinition::Bogus(),
                        const LAllocation& memoryBase = LAllocation())
       : LInstructionHelper(classOpcode) {
     setOperand(0, ptr);
     setOperand(1, value);
     setOperand(2, memoryBase);
     setTemp(0, temp);
-    setTemp(1, LDefinition::BogusTemp());
+    setTemp(1, LDefinition::Bogus());
     setTemp(2, flagTemp);
   }
   // MIPS32, MIPS64
@@ -6588,9 +6588,9 @@ class LWasmAtomicBinopHeap : public LInstructionHelper<1, 3, 6> {
     setOperand(0, ptr);
     setOperand(1, value);
     setOperand(2, LAllocation());
-    setTemp(0, LDefinition::BogusTemp());
-    setTemp(1, LDefinition::BogusTemp());
-    setTemp(2, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
+    setTemp(1, LDefinition::Bogus());
+    setTemp(2, LDefinition::Bogus());
     setTemp(3, valueTemp);
     setTemp(4, offsetTemp);
     setTemp(5, maskTemp);
@@ -6624,13 +6624,13 @@ class LWasmAtomicBinopHeapForEffect : public LInstructionHelper<0, 3, 5> {
   // ARM, ARM64, x86, x64
   LWasmAtomicBinopHeapForEffect(
       const LAllocation& ptr, const LAllocation& value,
-      const LDefinition& flagTemp = LDefinition::BogusTemp(),
+      const LDefinition& flagTemp = LDefinition::Bogus(),
       const LAllocation& memoryBase = LAllocation())
       : LInstructionHelper(classOpcode) {
     setOperand(0, ptr);
     setOperand(1, value);
     setOperand(2, memoryBase);
-    setTemp(0, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
     setTemp(1, flagTemp);
   }
   // MIPS32, MIPS64
@@ -6643,8 +6643,8 @@ class LWasmAtomicBinopHeapForEffect : public LInstructionHelper<0, 3, 5> {
     setOperand(0, ptr);
     setOperand(1, value);
     setOperand(2, LAllocation());
-    setTemp(0, LDefinition::BogusTemp());
-    setTemp(1, LDefinition::BogusTemp());
+    setTemp(0, LDefinition::Bogus());
+    setTemp(1, LDefinition::Bogus());
     setTemp(2, valueTemp);
     setTemp(3, offsetTemp);
     setTemp(4, maskTemp);

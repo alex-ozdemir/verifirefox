@@ -14,7 +14,7 @@ encoding_c = "0.9.5"
 encoding_c_mem = "0.2.4"
 mozilla-central-workspace-hack = { path = "../../../../build/workspace-hack" }
 mozglue-static = { path = "../../../../mozglue/static/rust" }
-verifirefox = { path = "../../jit/verifier/rust" }
+verifirefox = { path = "../../jit/verifier/rust", optional = true }
 
 [features]
 cranelift_x86 = ['baldrdash/cranelift_x86']
@@ -22,6 +22,7 @@ cranelift_arm32 = ['baldrdash/cranelift_arm32']
 cranelift_arm64 = ['baldrdash/cranelift_arm64']
 cranelift_none = ['baldrdash/cranelift_none']
 simd-accel = ['encoding_c/simd-accel']
+js-verifier = ['verifirefox']
 
 # Uncomment this to enable perf support in release mode.
 #[profile.release]

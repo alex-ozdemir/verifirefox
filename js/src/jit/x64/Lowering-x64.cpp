@@ -315,7 +315,7 @@ void LIRGenerator::visitWasmAtomicBinopHeap(MWasmAtomicBinopHeap* ins) {
   }
 
   auto* lir = new (alloc()) LWasmAtomicBinopHeap(
-      useRegister(base), value, bitOp ? temp() : LDefinition::BogusTemp());
+      useRegister(base), value, bitOp ? temp() : LDefinition::Bogus());
 
   if (reuseInput) {
     defineReuseInput(lir, ins, LWasmAtomicBinopHeap::valueOp);
@@ -378,7 +378,7 @@ void LIRGenerator::visitWasmTruncateToInt64(MWasmTruncateToInt64* ins) {
   MOZ_ASSERT(opd->type() == MIRType::Double || opd->type() == MIRType::Float32);
 
   LDefinition maybeTemp =
-      ins->isUnsigned() ? tempDouble() : LDefinition::BogusTemp();
+      ins->isUnsigned() ? tempDouble() : LDefinition::Bogus();
   defineInt64(new (alloc()) LWasmTruncateToInt64(useRegister(opd), maybeTemp),
               ins);
 }
@@ -388,7 +388,7 @@ void LIRGenerator::visitInt64ToFloatingPoint(MInt64ToFloatingPoint* ins) {
   MOZ_ASSERT(opd->type() == MIRType::Int64);
   MOZ_ASSERT(IsFloatingPointType(ins->type()));
 
-  LDefinition maybeTemp = ins->isUnsigned() ? temp() : LDefinition::BogusTemp();
+  LDefinition maybeTemp = ins->isUnsigned() ? temp() : LDefinition::Bogus();
   define(new (alloc()) LInt64ToFloatingPoint(useInt64Register(opd), maybeTemp),
          ins);
 }

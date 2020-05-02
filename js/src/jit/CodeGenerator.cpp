@@ -6114,7 +6114,7 @@ void CodeGenerator::emitGCThingResultChecks(LInstruction* lir,
   }
 
   MOZ_ASSERT(lir->numDefs() == 1);
-  if (lir->getDef(0)->isBogusTemp()) {
+  if (lir->getDef(0)->isBogus()) {
     return;
   }
 
@@ -8047,7 +8047,7 @@ void CodeGenerator::visitModD(LModD* ins) {
   FloatRegister rhs = ToFloatRegister(ins->rhs());
 
   MOZ_ASSERT(ToFloatRegister(ins->output()) == ReturnDoubleReg);
-  MOZ_ASSERT(ins->temp()->isBogusTemp() == gen->compilingWasm());
+  MOZ_ASSERT(ins->temp()->isBogus() == gen->compilingWasm());
 
   if (gen->compilingWasm()) {
     masm.setupWasmABICall();
@@ -8772,7 +8772,7 @@ void CodeGenerator::visitSubstr(LSubstr* lir) {
   // On x86 there are not enough registers. In that case reuse the string
   // register as temporary.
   Register temp2 =
-      lir->temp2()->isBogusTemp() ? string : ToRegister(lir->temp2());
+      lir->temp2()->isBogus() ? string : ToRegister(lir->temp2());
 
   Address stringFlags(string, JSString::offsetOfFlags());
 
@@ -11212,7 +11212,7 @@ void CodeGenerator::visitGetPropertyCacheV(LGetPropertyCacheV* ins) {
                                                ins->mir()->idval()->type());
   TypedOrValueRegister output(ToOutValue(ins));
   Register maybeTemp =
-      ins->temp()->isBogusTemp() ? InvalidReg : ToRegister(ins->temp());
+      ins->temp()->isBogus() ? InvalidReg : ToRegister(ins->temp());
 
   addGetPropertyCache(ins, liveRegs, value, id, output, maybeTemp,
                       IonGetPropertyICFlags(ins->mir()));
@@ -11229,7 +11229,7 @@ void CodeGenerator::visitGetPropertyCacheT(LGetPropertyCacheT* ins) {
   TypedOrValueRegister output(ins->mir()->type(),
                               ToAnyRegister(ins->getDef(0)));
   Register maybeTemp =
-      ins->temp()->isBogusTemp() ? InvalidReg : ToRegister(ins->temp());
+      ins->temp()->isBogus() ? InvalidReg : ToRegister(ins->temp());
 
   addGetPropertyCache(ins, liveRegs, value, id, output, maybeTemp,
                       IonGetPropertyICFlags(ins->mir()));
@@ -11759,7 +11759,7 @@ void CodeGenerator::visitUnboxObjectOrNull(LUnboxObjectOrNull* lir) {
 void CodeGenerator::visitLoadUnboxedScalar(LLoadUnboxedScalar* lir) {
   Register elements = ToRegister(lir->elements());
   Register temp =
-      lir->temp()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp());
+      lir->temp()->isBogus() ? InvalidReg : ToRegister(lir->temp());
   AnyRegister out = ToAnyRegister(lir->output());
 
   const MLoadUnboxedScalar* mir = lir->mir();

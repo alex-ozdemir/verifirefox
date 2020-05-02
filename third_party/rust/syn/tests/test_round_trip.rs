@@ -2,22 +2,23 @@
 #![recursion_limit = "1024"]
 #![feature(rustc_private)]
 
-extern crate quote;
-extern crate rayon;
-extern crate syn;
-extern crate syntax;
-extern crate syntax_pos;
-extern crate walkdir;
+extern crate rustc_ast;
+extern crate rustc_errors;
+extern crate rustc_expand;
+extern crate rustc_parse as parse;
+extern crate rustc_session;
+extern crate rustc_span;
 
 mod features;
 
 use quote::quote;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use syntax::ast;
-use syntax::parse::{self, PResult, ParseSess};
-use syntax::source_map::FilePathMapping;
-use syntax_pos::edition::Edition;
-use syntax_pos::FileName;
+use rustc_ast::ast;
+use rustc_errors::PResult;
+use rustc_session::parse::ParseSess;
+use rustc_span::edition::Edition;
+use rustc_span::source_map::FilePathMapping;
+use rustc_span::FileName;
 use walkdir::{DirEntry, WalkDir};
 
 use std::fs::File;
@@ -38,7 +39,6 @@ mod repo;
 use common::eq::SpanlessEq;
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore = "requires nix .sh")]
 fn test_round_trip() {
     repo::clone_rust();
     let abort_after = common::abort_after();
@@ -80,7 +80,7 @@ fn test_round_trip() {
             let back = quote!(#krate).to_string();
 
             let equal = panic::catch_unwind(|| {
-                syntax::with_globals(Edition::Edition2018, || {
+                rustc_ast::with_globals(Edition::Edition2018, || {
                     let sess = ParseSess::new(FilePathMapping::empty());
                     let before = match libsyntax_parse(content, &sess) {
                         Ok(before) => before,

@@ -453,7 +453,7 @@ void CodeGenerator::visitWasmCompareExchangeHeap(
   Register ptr = ToRegister(ins->ptr());
   Register oldval = ToRegister(ins->oldValue());
   Register newval = ToRegister(ins->newValue());
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   Scalar::Type accessType = mir->access().type();
   BaseIndex srcAddr(HeapReg, ptr, TimesOne, mir->access().offset());
@@ -472,7 +472,7 @@ void CodeGenerator::visitWasmAtomicExchangeHeap(LWasmAtomicExchangeHeap* ins) {
 
   Register ptr = ToRegister(ins->ptr());
   Register value = ToRegister(ins->value());
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   Scalar::Type accessType = mir->access().type();
 
@@ -494,9 +494,9 @@ void CodeGenerator::visitWasmAtomicBinopHeap(LWasmAtomicBinopHeap* ins) {
   Register ptr = ToRegister(ins->ptr());
   const LAllocation* value = ins->value();
   Register temp =
-      ins->temp()->isBogusTemp() ? InvalidReg : ToRegister(ins->temp());
+      ins->temp()->isBogus() ? InvalidReg : ToRegister(ins->temp());
   Register output = ToRegister(ins->output());
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   Scalar::Type accessType = mir->access().type();
   if (accessType == Scalar::Uint32) {
@@ -527,7 +527,7 @@ void CodeGenerator::visitWasmAtomicBinopHeapForEffect(
 
   Register ptr = ToRegister(ins->ptr());
   const LAllocation* value = ins->value();
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   Scalar::Type accessType = mir->access().type();
   AtomicOp op = mir->operation();
@@ -655,7 +655,7 @@ void CodeGenerator::visitInt64ToFloatingPoint(LInt64ToFloatingPoint* lir) {
 
   MIRType outputType = mir->type();
   MOZ_ASSERT(outputType == MIRType::Double || outputType == MIRType::Float32);
-  MOZ_ASSERT(isUnsigned == !lir->getTemp(0)->isBogusTemp());
+  MOZ_ASSERT(isUnsigned == !lir->getTemp(0)->isBogus());
 
   if (outputType == MIRType::Double) {
     if (isUnsigned) {

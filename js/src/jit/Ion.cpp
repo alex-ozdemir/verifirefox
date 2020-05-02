@@ -46,8 +46,11 @@
 #include "jit/Sink.h"
 #include "jit/StupidAllocator.h"
 #include "jit/ValueNumbering.h"
-#include "jit/verifier/VerifierMarshalling.h"
-#include "jit/verifier/VerifierPasses.h"
+#ifdef JS_VERIFIER
+#  include "jit/verifier/VerifierExecute.h"
+#  include "jit/verifier/VerifierMarshalling.h"
+#  include "jit/verifier/VerifierPasses.h"
+#endif
 #include "jit/WasmBCE.h"
 #include "js/Printf.h"
 #include "js/UniquePtr.h"
@@ -139,6 +142,12 @@ JitContext::JitContext() : JitContext(nullptr) {}
 
 JitContext::~JitContext() { SetJitContext(prev_); }
 
+#ifdef JS_VERIFIER
+void VerifyFailCallback() {
+  MOZ_CRASH("verifirefox pass failed");
+}
+#endif
+
 bool jit::InitializeJit() {
   if (!TlsJitContext.init()) {
     return false;
@@ -151,6 +160,10 @@ bool jit::InitializeJit() {
   if (env && env[0] && env[0] != '0') {
     CacheIRSpewer::singleton().init(env);
   }
+#endif
+
+#ifdef JS_VERIFIER
+  verifier::ExecuteInit(&VerifyFailCallback);
 #endif
 
 #if defined(JS_CODEGEN_ARM)
@@ -1584,8 +1597,9 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
 
   AllocationIntegrityState integrity(*lir);
 
-  // TODO: RAII this.
-  verifier::LIRGraph* const beforeGraph = verifier::MarshallLIRGraph(*lir);
+#ifdef JS_VERIFIER
+  verifier::LIRGraph beforeGraph = verifier::MarshallLirGraph(*lir);
+#endif
 
   {
     AutoTraceLog log(logger, TraceLogger_RegisterAllocation);
@@ -1599,7 +1613,6 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
 #ifdef DEBUG
         if (JitOptions.fullDebugChecks) {
           if (!integrity.record()) {
-            verifier::DropLIRGraph(beforeGraph);
             return nullptr;
           }
         }
@@ -1608,14 +1621,12 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
         BacktrackingAllocator regalloc(mir, &lirgen, *lir,
                                        allocator == RegisterAllocator_Testbed);
         if (!regalloc.go()) {
-          verifier::DropLIRGraph(beforeGraph);
           return nullptr;
         }
 
 #ifdef DEBUG
         if (JitOptions.fullDebugChecks) {
           if (!integrity.check(false)) {
-            verifier::DropLIRGraph(beforeGraph);
             return nullptr;
           }
         }
@@ -1629,17 +1640,14 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
         // Use the integrity checker to populate safepoint information, so
         // run it in all builds.
         if (!integrity.record()) {
-          verifier::DropLIRGraph(beforeGraph);
           return nullptr;
         }
 
         StupidAllocator regalloc(mir, &lirgen, *lir);
         if (!regalloc.go()) {
-          verifier::DropLIRGraph(beforeGraph);
           return nullptr;
         }
         if (!integrity.check(true)) {
-          verifier::DropLIRGraph(beforeGraph);
           return nullptr;
         }
         gs.spewPass("Allocate Registers [Stupid]");
@@ -1651,21 +1659,15 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
     }
 
     if (mir->shouldCancel("Allocate Registers")) {
-      verifier::DropLIRGraph(beforeGraph);
       return nullptr;
     }
   }
 
-  verifier::LIRGraph* const afterGraph = verifier::MarshallLIRGraph(*lir);
+#ifdef JS_VERIFIER
+  verifier::LIRGraph afterGraph = verifier::MarshallLirGraph(*lir);
 
-  {
-    static Mutex verifierLock(mutexid::IonVerifier);
-    LockGuard<Mutex> guard(verifierLock);
-    verifier::VerifyRegAllocationPass(beforeGraph, afterGraph);
-  }
-
-  verifier::DropLIRGraph(beforeGraph);
-  verifier::DropLIRGraph(afterGraph);
+  verifier::RunRegAllocPassAsync(std::move(beforeGraph), std::move(afterGraph));
+#endif
 
   return lir;
 }

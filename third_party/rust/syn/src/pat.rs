@@ -386,11 +386,12 @@ mod parsing {
     use super::*;
 
     use crate::ext::IdentExt;
-    use crate::parse::{Parse, ParseStream, Result};
+    use crate::parse::{Parse, ParseBuffer, ParseStream, Result};
     use crate::path;
 
     impl Parse for Pat {
         fn parse(input: ParseStream) -> Result<Self> {
+            let begin = input.fork();
             let lookahead = input.lookahead1();
             if lookahead.peek(Ident)
                 && ({
@@ -434,7 +435,7 @@ mod parsing {
             } else if lookahead.peek(token::Bracket) {
                 input.call(pat_slice).map(Pat::Slice)
             } else if lookahead.peek(Token![..]) && !input.peek(Token![...]) {
-                input.call(pat_rest).map(Pat::Rest)
+                pat_range_half_open(input, begin)
             } else {
                 Err(lookahead.error())
             }
@@ -442,10 +443,11 @@ mod parsing {
     }
 
     fn pat_path_or_macro_or_struct_or_range(input: ParseStream) -> Result<Pat> {
+        let begin = input.fork();
         let (qself, path) = path::parsing::qpath(input, true)?;
 
         if input.peek(Token![..]) {
-            return pat_range(input, qself, path).map(Pat::Range);
+            return pat_range(input, begin, qself, path);
         }
 
         if qself.is_some() {
@@ -487,7 +489,7 @@ mod parsing {
         } else if input.peek(token::Paren) {
             pat_tuple_struct(input, path).map(Pat::TupleStruct)
         } else if input.peek(Token![..]) {
-            pat_range(input, qself, path).map(Pat::Range)
+            pat_range(input, begin, qself, path)
         } else {
             Ok(Pat::Path(PatPath {
                 attrs: Vec::new(),
@@ -578,6 +580,7 @@ mod parsing {
     }
 
     fn field_pat(input: ParseStream) -> Result<FieldPat> {
+        let attrs = input.call(Attribute::parse_outer)?;
         let boxed: Option<Token![box]> = input.parse()?;
         let by_ref: Option<Token![ref]> = input.parse()?;
         let mutability: Option<Token![mut]> = input.parse()?;
@@ -587,7 +590,7 @@ mod parsing {
             || member.is_unnamed()
         {
             return Ok(FieldPat {
-                attrs: Vec::new(),
+                attrs,
                 member,
                 colon_token: input.parse()?,
                 pat: input.parse()?,
@@ -610,30 +613,57 @@ mod parsing {
         if let Some(boxed) = boxed {
             pat = Pat::Box(PatBox {
                 attrs: Vec::new(),
-                pat: Box::new(pat),
                 box_token: boxed,
+                pat: Box::new(pat),
             });
         }
 
         Ok(FieldPat {
+            attrs,
             member: Member::Named(ident),
-            pat: Box::new(pat),
-            attrs: Vec::new(),
             colon_token: None,
+            pat: Box::new(pat),
         })
     }
 
-    fn pat_range(input: ParseStream, qself: Option<QSelf>, path: Path) -> Result<PatRange> {
-        Ok(PatRange {
-            attrs: Vec::new(),
-            lo: Box::new(Expr::Path(ExprPath {
+    fn pat_range(
+        input: ParseStream,
+        begin: ParseBuffer,
+        qself: Option<QSelf>,
+        path: Path,
+    ) -> Result<Pat> {
+        let limits: RangeLimits = input.parse()?;
+        let hi = input.call(pat_lit_expr)?;
+        if let Some(hi) = hi {
+            Ok(Pat::Range(PatRange {
                 attrs: Vec::new(),
-                qself,
-                path,
-            })),
-            limits: input.parse()?,
-            hi: input.call(pat_lit_expr)?,
-        })
+                lo: Box::new(Expr::Path(ExprPath {
+                    attrs: Vec::new(),
+                    qself,
+                    path,
+                })),
+                limits,
+                hi,
+            }))
+        } else {
+            Ok(Pat::Verbatim(verbatim::between(begin, input)))
+        }
+    }
+
+    fn pat_range_half_open(input: ParseStream, begin: ParseBuffer) -> Result<Pat> {
+        let limits: RangeLimits = input.parse()?;
+        let hi = input.call(pat_lit_expr)?;
+        if hi.is_some() {
+            Ok(Pat::Verbatim(verbatim::between(begin, input)))
+        } else {
+            match limits {
+                RangeLimits::HalfOpen(dot2_token) => Ok(Pat::Rest(PatRest {
+                    attrs: Vec::new(),
+                    dot2_token,
+                })),
+                RangeLimits::Closed(_) => Err(input.error("expected range upper bound")),
+            }
+        }
     }
 
     fn pat_tuple(input: ParseStream) -> Result<PatTuple> {
@@ -668,14 +698,21 @@ mod parsing {
     }
 
     fn pat_lit_or_range(input: ParseStream) -> Result<Pat> {
-        let lo = input.call(pat_lit_expr)?;
+        let begin = input.fork();
+        let lo = input.call(pat_lit_expr)?.unwrap();
         if input.peek(Token![..]) {
-            Ok(Pat::Range(PatRange {
-                attrs: Vec::new(),
-                lo,
-                limits: input.parse()?,
-                hi: input.call(pat_lit_expr)?,
-            }))
+            let limits: RangeLimits = input.parse()?;
+            let hi = input.call(pat_lit_expr)?;
+            if let Some(hi) = hi {
+                Ok(Pat::Range(PatRange {
+                    attrs: Vec::new(),
+                    lo,
+                    limits,
+                    hi,
+                }))
+            } else {
+                Ok(Pat::Verbatim(verbatim::between(begin, input)))
+            }
         } else {
             Ok(Pat::Lit(PatLit {
                 attrs: Vec::new(),
@@ -684,7 +721,17 @@ mod parsing {
         }
     }
 
-    fn pat_lit_expr(input: ParseStream) -> Result<Box<Expr>> {
+    fn pat_lit_expr(input: ParseStream) -> Result<Option<Box<Expr>>> {
+        if input.is_empty()
+            || input.peek(Token![|])
+            || input.peek(Token![=>])
+            || input.peek(Token![:]) && !input.peek(Token![::])
+            || input.peek(Token![,])
+            || input.peek(Token![;])
+        {
+            return Ok(None);
+        }
+
         let neg: Option<Token![-]> = input.parse()?;
 
         let lookahead = input.lookahead1();
@@ -704,7 +751,7 @@ mod parsing {
             return Err(lookahead.error());
         };
 
-        Ok(Box::new(if let Some(neg) = neg {
+        Ok(Some(Box::new(if let Some(neg) = neg {
             Expr::Unary(ExprUnary {
                 attrs: Vec::new(),
                 op: UnOp::Neg(neg),
@@ -712,7 +759,7 @@ mod parsing {
             })
         } else {
             expr
-        }))
+        })))
     }
 
     fn pat_slice(input: ParseStream) -> Result<PatSlice> {
@@ -736,13 +783,6 @@ mod parsing {
             elems,
         })
     }
-
-    fn pat_rest(input: ParseStream) -> Result<PatRest> {
-        Ok(PatRest {
-            attrs: Vec::new(),
-            dot2_token: input.parse()?,
-        })
-    }
 }
 
 #[cfg(feature = "printing")]
@@ -756,12 +796,14 @@ mod printing {
 
     impl ToTokens for PatWild {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.underscore_token.to_tokens(tokens);
         }
     }
 
     impl ToTokens for PatIdent {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.by_ref.to_tokens(tokens);
             self.mutability.to_tokens(tokens);
             self.ident.to_tokens(tokens);
@@ -774,6 +816,7 @@ mod printing {
 
     impl ToTokens for PatStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.path.to_tokens(tokens);
             self.brace_token.surround(tokens, |tokens| {
                 self.fields.to_tokens(tokens);
@@ -788,6 +831,7 @@ mod printing {
 
     impl ToTokens for PatTupleStruct {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.path.to_tokens(tokens);
             self.pat.to_tokens(tokens);
         }
@@ -804,12 +848,14 @@ mod printing {
 
     impl ToTokens for PatPath {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             private::print_path(tokens, &self.qself, &self.path);
         }
     }
 
     impl ToTokens for PatTuple {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.paren_token.surround(tokens, |tokens| {
                 self.elems.to_tokens(tokens);
             });
@@ -818,6 +864,7 @@ mod printing {
 
     impl ToTokens for PatBox {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.box_token.to_tokens(tokens);
             self.pat.to_tokens(tokens);
         }
@@ -825,6 +872,7 @@ mod printing {
 
     impl ToTokens for PatReference {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.and_token.to_tokens(tokens);
             self.mutability.to_tokens(tokens);
             self.pat.to_tokens(tokens);
@@ -833,18 +881,21 @@ mod printing {
 
     impl ToTokens for PatRest {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.dot2_token.to_tokens(tokens);
         }
     }
 
     impl ToTokens for PatLit {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.expr.to_tokens(tokens);
         }
     }
 
     impl ToTokens for PatRange {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.lo.to_tokens(tokens);
             match &self.limits {
                 RangeLimits::HalfOpen(t) => t.to_tokens(tokens),
@@ -856,6 +907,7 @@ mod printing {
 
     impl ToTokens for PatSlice {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.bracket_token.surround(tokens, |tokens| {
                 self.elems.to_tokens(tokens);
             });
@@ -864,12 +916,14 @@ mod printing {
 
     impl ToTokens for PatMacro {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.mac.to_tokens(tokens);
         }
     }
 
     impl ToTokens for PatOr {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             self.leading_vert.to_tokens(tokens);
             self.cases.to_tokens(tokens);
         }
@@ -877,6 +931,7 @@ mod printing {
 
     impl ToTokens for FieldPat {
         fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.append_all(self.attrs.outer());
             if let Some(colon_token) = &self.colon_token {
                 self.member.to_tokens(tokens);
                 colon_token.to_tokens(tokens);

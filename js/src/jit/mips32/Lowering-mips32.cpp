@@ -52,14 +52,13 @@ void LIRGenerator::visitBox(MBox* box) {
   // of the output, so bypass defineBox().
   uint32_t vreg = getVirtualRegister();
 
-  // Note that because we're using BogusTemp(), we do not change the type of
-  // the definition. We also do not define the first output as "TYPE",
-  // because it has no corresponding payload at (vreg + 1). Also note that
-  // although we copy the input's original type for the payload half of the
-  // definition, this is only for clarity. BogusTemp() definitions are
-  // ignored.
+  // Note that because we're using Bogus(), we do not change the type of the
+  // definition. We also do not define the first output as "TYPE", because it
+  // has no corresponding payload at (vreg + 1). Also note that although we
+  // copy the input's original type for the payload half of the definition, this
+  // is only for clarity. Bogus() definitions are ignored.
   lir->setDef(0, LDefinition(vreg, LDefinition::GENERAL));
-  lir->setDef(1, LDefinition::BogusTemp());
+  lir->setDef(1, LDefinition::Bogus());
   box->setVirtualRegister(vreg);
   add(lir);
 }
@@ -169,7 +168,7 @@ void LIRGeneratorMIPS::lowerTruncateDToInt32(MTruncateToInt32* ins) {
   MOZ_ASSERT(opd->type() == MIRType::Double);
 
   define(new (alloc())
-             LTruncateDToInt32(useRegister(opd), LDefinition::BogusTemp()),
+             LTruncateDToInt32(useRegister(opd), LDefinition::Bogus()),
          ins);
 }
 
@@ -178,7 +177,7 @@ void LIRGeneratorMIPS::lowerTruncateFToInt32(MTruncateToInt32* ins) {
   MOZ_ASSERT(opd->type() == MIRType::Float32);
 
   define(new (alloc())
-             LTruncateFToInt32(useRegister(opd), LDefinition::BogusTemp()),
+             LTruncateFToInt32(useRegister(opd), LDefinition::Bogus()),
          ins);
 }
 

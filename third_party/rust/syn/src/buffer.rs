@@ -221,7 +221,6 @@ impl<'a> Cursor<'a> {
 
     /// Checks whether the cursor is currently pointing at the end of its valid
     /// scope.
-    #[inline]
     pub fn eof(self) -> bool {
         // We're at eof if we're at the end of our scope.
         self.ptr == self.scope
@@ -340,6 +339,26 @@ impl<'a> Cursor<'a> {
             Entry::Ident(t) => t.span(),
             Entry::Punct(o) => o.span(),
             Entry::End(..) => Span::call_site(),
+        }
+    }
+
+    /// Skip over the next token without cloning it. Returns `None` if this
+    /// cursor points to eof.
+    ///
+    /// This method treats `'lifetimes` as a single token.
+    pub(crate) fn skip(self) -> Option<Cursor<'a>> {
+        match self.entry() {
+            Entry::End(..) => None,
+
+            // Treat lifetimes as a single tt for the purposes of 'skip'.
+            Entry::Punct(op) if op.as_char() == '\'' && op.spacing() == Spacing::Joint => {
+                let next = unsafe { self.bump() };
+                match next.entry() {
+                    Entry::Ident(_) => Some(unsafe { next.bump() }),
+                    _ => Some(next),
+                }
+            }
+            _ => Some(unsafe { self.bump() }),
         }
     }
 }

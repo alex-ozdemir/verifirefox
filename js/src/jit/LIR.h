@@ -245,11 +245,11 @@ class LUse : public LAllocation {
   }
   uint32_t virtualRegister() const {
     uint32_t index = (data() >> VREG_SHIFT) & VREG_MASK;
-    // MOZ_ASSERT(index != 0);
+    MOZ_ASSERT(index != 0);
     return index;
   }
   uint32_t registerCode() const {
-    // MOZ_ASSERT(policy() == FIXED);
+    MOZ_ASSERT(policy() == FIXED);
     return (data() >> REG_SHIFT) & REG_MASK;
   }
   bool isFixedRegister() const { return policy() == FIXED; }
@@ -445,9 +445,9 @@ class LDefinition {
     set(index, type, FIXED);
   }
 
-  LDefinition() : bits_(0) { MOZ_ASSERT(isBogusTemp()); }
+  LDefinition() : bits_(0) { MOZ_ASSERT(isBogus()); }
 
-  static LDefinition BogusTemp() { return LDefinition(); }
+  static LDefinition Bogus() { return LDefinition(); }
 
   Policy policy() const {
     return (Policy)((bits_ >> POLICY_SHIFT) & POLICY_MASK);
@@ -493,7 +493,7 @@ class LDefinition {
   LAllocation* output() { return &output_; }
   const LAllocation* output() const { return &output_; }
   bool isFixed() const { return policy() == FIXED; }
-  bool isBogusTemp() const { return isFixed() && output()->isBogus(); }
+  bool isBogus() const { return isFixed() && output()->isBogus(); }
   void setVirtualRegister(uint32_t index) {
     MOZ_ASSERT(index < VREG_MASK);
     bits_ &= ~(VREG_MASK << VREG_SHIFT);

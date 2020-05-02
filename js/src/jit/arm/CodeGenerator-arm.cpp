@@ -1678,7 +1678,7 @@ void CodeGenerator::visitCompareExchangeTypedArrayElement(
   Register elements = ToRegister(lir->elements());
   AnyRegister output = ToAnyRegister(lir->output());
   Register temp =
-      lir->temp()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp());
+      lir->temp()->isBogus() ? InvalidReg : ToRegister(lir->temp());
 
   Register oldval = ToRegister(lir->oldval());
   Register newval = ToRegister(lir->newval());
@@ -1703,7 +1703,7 @@ void CodeGenerator::visitAtomicExchangeTypedArrayElement(
   Register elements = ToRegister(lir->elements());
   AnyRegister output = ToAnyRegister(lir->output());
   Register temp =
-      lir->temp()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp());
+      lir->temp()->isBogus() ? InvalidReg : ToRegister(lir->temp());
 
   Register value = ToRegister(lir->value());
 
@@ -1730,7 +1730,7 @@ void CodeGenerator::visitAtomicTypedArrayElementBinop(
   Register elements = ToRegister(lir->elements());
   Register flagTemp = ToRegister(lir->temp1());
   Register outTemp =
-      lir->temp2()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp2());
+      lir->temp2()->isBogus() ? InvalidReg : ToRegister(lir->temp2());
   Register value = ToRegister(lir->value());
 
   Scalar::Type arrayType = lir->mir()->arrayType();
@@ -1943,7 +1943,7 @@ void CodeGeneratorARM::emitWasmLoad(T* lir) {
   if (mir->access().offset() || mir->access().type() == Scalar::Int64) {
     ptr = ToRegister(lir->ptrCopy());
   } else {
-    MOZ_ASSERT(lir->ptrCopy()->isBogusTemp());
+    MOZ_ASSERT(lir->ptrCopy()->isBogus());
     ptr = ToRegister(lir->ptr());
   }
 
@@ -2016,7 +2016,7 @@ void CodeGeneratorARM::emitWasmStore(T* lir) {
   if (mir->access().offset() || accessType == Scalar::Int64) {
     ptr = ToRegister(lir->ptrCopy());
   } else {
-    MOZ_ASSERT(lir->ptrCopy()->isBogusTemp());
+    MOZ_ASSERT(lir->ptrCopy()->isBogus());
     ptr = ToRegister(lir->ptr());
   }
 
@@ -2159,7 +2159,7 @@ void CodeGenerator::visitWasmCompareExchangeHeap(
   Register ptrReg = ToRegister(ptr);
   BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
 
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   Register oldval = ToRegister(ins->oldValue());
   Register newval = ToRegister(ins->newValue());
@@ -2175,7 +2175,7 @@ void CodeGenerator::visitWasmAtomicExchangeHeap(LWasmAtomicExchangeHeap* ins) {
   Register value = ToRegister(ins->value());
   Register output = ToRegister(ins->output());
   BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   masm.wasmAtomicExchange(mir->access(), srcAddr, value, output);
 }
@@ -2189,7 +2189,7 @@ void CodeGenerator::visitWasmAtomicBinopHeap(LWasmAtomicBinopHeap* ins) {
   Register output = ToRegister(ins->output());
   const LAllocation* value = ins->value();
   AtomicOp op = mir->operation();
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
   masm.wasmAtomicFetchOp(mir->access(), op, ToRegister(value), srcAddr,
@@ -2205,7 +2205,7 @@ void CodeGenerator::visitWasmAtomicBinopHeapForEffect(
   Register flagTemp = ToRegister(ins->flagTemp());
   const LAllocation* value = ins->value();
   AtomicOp op = mir->operation();
-  MOZ_ASSERT(ins->addrTemp()->isBogusTemp());
+  MOZ_ASSERT(ins->addrTemp()->isBogus());
 
   BaseIndex srcAddr(HeapReg, ptrReg, TimesOne, mir->access().offset());
   masm.wasmAtomicEffectOp(mir->access(), op, ToRegister(value), srcAddr,

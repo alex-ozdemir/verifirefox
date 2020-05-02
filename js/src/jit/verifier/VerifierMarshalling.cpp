@@ -6,64 +6,153 @@
 
 #include "jit/verifier/VerifierMarshalling.h"
 
+#include "jit/verifier/VerifierBindings.h"
+
 using namespace js;
 using namespace js::jit;
 
-verifier::LUsePolicy MarshallLUsePolicy(const LUse::Policy policy) {
-  switch (policy) {
-    case LUse::ANY: {
-      return verifier::LUsePolicy::ANY;
+verifier::LirType MarshallLirType(
+    const LDefinition::Type type) {
+  switch (type) {
+    case LDefinition::GENERAL: {
+      return verifier::LirType::GENERAL;
     }
-    case LUse::REGISTER: {
-      return verifier::LUsePolicy::REGISTER;
+    case LDefinition::INT32: {
+      return verifier::LirType::INT32;
     }
-    case LUse::FIXED: {
-      return verifier::LUsePolicy::FIXED;
+    case LDefinition::OBJECT: {
+      return verifier::LirType::OBJECT;
     }
-    case LUse::KEEPALIVE: {
-      return verifier::LUsePolicy::KEEPALIVE;
+    case LDefinition::SLOTS: {
+      return verifier::LirType::SLOTS;
     }
-    case LUse::RECOVERED_INPUT: {
-      return verifier::LUsePolicy::RECOVERED_INPUT;
+    case LDefinition::FLOAT32: {
+      return verifier::LirType::FLOAT32;
     }
+    case LDefinition::DOUBLE: {
+      return verifier::LirType::DOUBLE;
+    }
+    case LDefinition::SIMD128INT: {
+      return verifier::LirType::SIMD128INT;
+    }
+    case LDefinition::SIMD128FLOAT: {
+      return verifier::LirType::SIMD128FLOAT;
+    }
+#ifdef JS_NUNBOX32
+    case LDefinition::TYPE: {
+      return verifier::LirType::TYPE;
+    }
+    case LDefinition::PAYLOAD: {
+      return verifier::LirType::PAYLOAD;
+    }
+#elif JS_PUNBOX64
+    case LDefinition::BOX: {
+      return verifier::LirType::BOX;
+    }
+#endif
     default: {
-      MOZ_RELEASE_ASSERT(false, "Unrecognized LIR definition policy");
+      MOZ_RELEASE_ASSERT(false, "Unrecognized LIR type");
     }
   }
 }
 
-verifier::LAllocation* MarshallLAllocation(const LAllocation& allocation) {
+verifier::LirUseInfo* MarshallLirUseInfo(const LUse& use) {
+  const verifier::VirtualReg outVirtualReg = use.virtualRegister();
+  MOZ_ASSERT(outVirtualReg);
+
+  const bool outIsUsedAtStart = use.usedAtStart();
+
+  switch (use.policy()) {
+    case LUse::ANY:
+    case LUse::KEEPALIVE:
+    case LUse::RECOVERED_INPUT: {
+      bool outIsRecoveredInput = use.policy() == LUse::RECOVERED_INPUT;
+      return verifirefox_ast_lir_use_info_new_with_any_policy(outVirtualReg,
+                                                          outIsUsedAtStart,
+                                                          outIsRecoveredInput);
+    }
+    case LUse::REGISTER:
+    case LUse::FIXED: {
+      return verifirefox_ast_lir_use_info_new_with_reg_policy(outVirtualReg,
+                                                          outIsUsedAtStart);
+    }
+    default: {
+      MOZ_RELEASE_ASSERT(false, "Unrecognized LIR use policy");
+    }
+  }
+}
+
+verifier::PhysicalLoc* MarshallPhysicalLoc(const LAllocation& allocation) {
   switch (allocation.kind()) {
-    case LAllocation::CONSTANT_VALUE: {
-      return verifirefox_lir_allocation_new_other();
-    }
-    case LAllocation::CONSTANT_INDEX: {
-      return verifirefox_lir_allocation_new_other();
-    }
-    case LAllocation::USE: {
-      const LUse& use = *allocation.toUse();
-      const verifier::LUsePolicy outPolicy = MarshallLUsePolicy(use.policy());
-      return verifirefox_lir_allocation_new_use(outPolicy,
-                                                use.virtualRegister(),
-                                                use.registerCode(),
-                                                use.usedAtStart());
-    }
     case LAllocation::GPR: {
       const LGeneralReg& generalReg = *allocation.toGeneralReg();
-      return verifirefox_lir_allocation_new_general_reg(
+      return verifirefox_ast_lir_physical_loc_new_general_reg(
           generalReg.reg().code());
     }
     case LAllocation::FPU: {
       const LFloatReg& floatReg = *allocation.toFloatReg();
-      return verifirefox_lir_allocation_new_float_reg(floatReg.reg().code());
+      return verifirefox_ast_lir_physical_loc_new_float_reg(
+          floatReg.reg().code());
     }
     case LAllocation::STACK_SLOT: {
       const LStackSlot& stackSlot = *allocation.toStackSlot();
-      return verifirefox_lir_allocation_new_stack_slot(stackSlot.slot());
+      return verifirefox_ast_lir_physical_loc_new_stack_slot(stackSlot.slot());
     }
     case LAllocation::ARGUMENT_SLOT: {
       const LArgument& argument = *allocation.toArgument();
-      return verifirefox_lir_allocation_new_argument(argument.index());
+      return verifirefox_ast_lir_physical_loc_new_argument(argument.index());
+    }
+    default: {
+      MOZ_RELEASE_ASSERT(false,
+                         "Unrecognized or unsupported LIR allocation kind");
+    }
+  }
+}
+
+verifier::LirAllocation* MarshallLirAllocation(const LAllocation& allocation) {
+  if (allocation.isBogus()) {
+    return verifirefox_ast_lir_allocation_new_bogus();
+  }
+
+  switch (allocation.kind()) {
+    case LAllocation::CONSTANT_VALUE:
+    case LAllocation::CONSTANT_INDEX: {
+      return verifirefox_ast_lir_allocation_new_constant();
+    }
+    case LAllocation::USE: {
+      const LUse& use = *allocation.toUse();
+      verifier::LirUseInfo* const outUseInfo = MarshallLirUseInfo(use);
+
+      switch (use.policy()) {
+        case LUse::FIXED: {
+          const verifier::PhysicalRegCode outPhysicalRegCode =
+              use.registerCode();
+          verifier::PhysicalLoc* const outPhysicalLoc =
+              AnyRegister::FromCode(outPhysicalRegCode).isFloat()
+                  ? verifirefox_ast_lir_physical_loc_new_float_reg(
+                      outPhysicalRegCode)
+                  : verifirefox_ast_lir_physical_loc_new_general_reg(
+                      outPhysicalRegCode);
+          return verifirefox_ast_lir_allocation_new_static(outPhysicalLoc,
+                                                       outUseInfo);
+        }
+        default: {
+          MOZ_ASSERT(use.policy() == LUse::ANY ||
+                     use.policy() == LUse::REGISTER ||
+                     use.policy() == LUse::KEEPALIVE ||
+                     use.policy() == LUse::RECOVERED_INPUT,
+                     "Unrecognized LIR use policy");
+          return verifirefox_ast_lir_allocation_new_dynamic(outUseInfo);
+        }
+      }
+    }
+    case LAllocation::GPR:
+    case LAllocation::FPU:
+    case LAllocation::STACK_SLOT:
+    case LAllocation::ARGUMENT_SLOT: {
+      verifier::PhysicalLoc* const outPhysicalLoc =
+          MarshallPhysicalLoc(allocation);
+      return verifirefox_ast_lir_allocation_new_static(outPhysicalLoc, nullptr);
     }
     default: {
       MOZ_RELEASE_ASSERT(false, "Unrecognized LIR allocation kind");
@@ -71,112 +160,74 @@ verifier::LAllocation* MarshallLAllocation(const LAllocation& allocation) {
   }
 }
 
-verifier::LDefinitionType MarshallLDefinitionType(
-    const LDefinition::Type type) {
-  switch (type) {
-    case LDefinition::GENERAL: {
-      return verifier::LDefinitionType::GENERAL;
-    }
-    case LDefinition::INT32: {
-      return verifier::LDefinitionType::INT32;
-    }
-    case LDefinition::OBJECT: {
-      return verifier::LDefinitionType::OBJECT;
-    }
-    case LDefinition::SLOTS: {
-      return verifier::LDefinitionType::SLOTS;
-    }
-    case LDefinition::FLOAT32: {
-      return verifier::LDefinitionType::FLOAT32;
-    }
-    case LDefinition::DOUBLE: {
-      return verifier::LDefinitionType::DOUBLE;
-    }
-    case LDefinition::SIMD128INT: {
-      return verifier::LDefinitionType::SIMD128INT;
-    }
-    case LDefinition::SIMD128FLOAT: {
-      return verifier::LDefinitionType::SIMD128FLOAT;
-    }
-#ifdef JS_NUNBOX32
-    case LDefinition::TYPE: {
-      return verifier::LDefinitionType::TYPE;
-    }
-    case LDefinition::PAYLOAD: {
-      return verifier::LDefinitionType::PAYLOAD;
-    }
-#elif JS_PUNBOX64
-    case LDefinition::BOX: {
-      return verifier::LDefinitionType::BOX;
-    }
-#endif
-    default: {
-      MOZ_RELEASE_ASSERT(false, "Unrecognized LIR definition type");
-    }
+verifier::LirDefinition* MarshallLirDefinition(const LDefinition& definition) {
+  if (definition.isBogus()) {
+    return nullptr;
   }
-}
 
-verifier::LDefinitionPolicy MarshallLDefinitionPolicy(
-    const LDefinition::Policy policy) {
-  switch (policy) {
+  const verifier::VirtualReg outVirtualReg = definition.virtualRegister();
+  MOZ_ASSERT(outVirtualReg);
+
+  const verifier::LirType outType = MarshallLirType(definition.type());
+
+  switch (definition.policy()) {
     case LDefinition::FIXED: {
-      return verifier::LDefinitionPolicy::FIXED;
+      verifier::PhysicalLoc* const outPhysicalLoc =
+          MarshallPhysicalLoc(*definition.output());
+      return verifirefox_ast_lir_definition_new_with_fixed_policy(outVirtualReg,
+                                                              outType,
+                                                              outPhysicalLoc);
     }
     case LDefinition::REGISTER: {
-      return verifier::LDefinitionPolicy::REGISTER;
+      MOZ_ASSERT(definition.output()->isBogus());
+      return verifirefox_ast_lir_definition_new_with_reg_policy(outVirtualReg,
+                                                            outType);
     }
     case LDefinition::MUST_REUSE_INPUT: {
-      return verifier::LDefinitionPolicy::MUST_REUSE_INPUT;
-    }
-    default: {
-      MOZ_RELEASE_ASSERT(false, "Unrecognized LIR definition policy");
+      const size_t outInput = definition.getReusedInput();
+      return verifirefox_ast_lir_definition_new_with_reuse_input_policy(
+          outVirtualReg, outType, outInput);
     }
   }
 }
 
-verifier::LDefinition* MarshallLDefinition(const LDefinition& definition) {
-  const verifier::LDefinitionType outType =
-      MarshallLDefinitionType(definition.type());
-  const verifier::LDefinitionPolicy outPolicy =
-      MarshallLDefinitionPolicy(definition.policy());
-  verifier::LAllocation* const outOutput =
-      definition.policy() == LDefinition::FIXED || definition.output()->isUse()
-          ? MarshallLAllocation(*definition.output())
-          : nullptr;
-  return verifirefox_lir_definition_new(definition.virtualRegister(), outType,
-                                        outPolicy, outOutput);
+verifier::LirMove* MarshallLirMove(const LMove& move) {
+  verifier::LirAllocation* const outFrom = MarshallLirAllocation(move.from());
+  verifier::LirAllocation* const outTo = MarshallLirAllocation(move.to());
+  const verifier::LirType outType = MarshallLirType(move.type());
+  return verifirefox_ast_lir_move_new(outFrom, outTo, outType);
 }
 
-verifier::LMove* MarshallLMove(const LMove& move) {
-  verifier::LAllocation* const outFrom = MarshallLAllocation(move.from());
-  verifier::LAllocation* const outTo = MarshallLAllocation(move.to());
-  const verifier::LDefinitionType outType =
-      MarshallLDefinitionType(move.type());
-  return verifirefox_lir_move_new(outFrom, outTo, outType);
-}
-
-verifier::LMoveGroup* MarshallLMoveGroup(const LMoveGroup& moveGroup) {
+verifier::LirMoveGroup* MarshallLirMoveGroup(const LMoveGroup& moveGroup) {
   const size_t numMoves = moveGroup.numMoves();
 
-  verifier::LMoveGroup* outMoveGroup = verifirefox_lir_move_group_new(numMoves);
+  verifier::LirMoveGroup* outMoveGroup =
+      verifirefox_ast_lir_move_group_new(numMoves);
 
   for (size_t moveIndex = 0; moveIndex < numMoves; ++moveIndex) {
     const LMove& move = moveGroup.getMove(moveIndex);
-    verifier::LMove* const outMove = MarshallLMove(move);
-    verifirefox_lir_move_group_push_move(outMoveGroup, outMove);
+    verifier::LirMove* const outMove = MarshallLirMove(move);
+    verifirefox_ast_lir_move_group_push_move(outMoveGroup, outMove);
   }
 
   return outMoveGroup;
 }
 
-verifier::LNode* MarshallLNode(const LNode& node) {
-  verifier::LOperation* outOperation;
+verifier::LirNode* MarshallLirNode(const LNode& node,
+                                   const LNode* const prevNode,
+                                   const LNode* const nextNode) {
+  verifier::LirOperation* outOperation;
 
   switch (node.op()) {
     case LNode::Opcode::MoveGroup: {
       const LMoveGroup& moveGroup = *node.toMoveGroup();
-      verifier::LMoveGroup* const outMoveGroup = MarshallLMoveGroup(moveGroup);
-      outOperation = verifirefox_lir_operation_new_move_group(outMoveGroup);
+      verifier::LirMoveGroup* const outMoveGroup =
+          MarshallLirMoveGroup(moveGroup);
+      outOperation = verifirefox_ast_lir_operation_new_move_group(outMoveGroup);
+      break;
+    }
+    case LNode::Opcode::Phi: {
+      outOperation = verifirefox_ast_lir_operation_new_phi();
       break;
     }
     default: {
@@ -197,16 +248,19 @@ verifier::LNode* MarshallLNode(const LNode& node) {
           ? 0
           : node.toInstruction()->numTemps();
 
-  const size_t numSuccessors =
-      node.isPhi()
-          ? 0
-          : node.toInstruction()->numSuccessors();
+  const size_t numPredecessors =
+      prevNode
+          ? 1
+          : node.block()->mir()->numPredecessors();
 
-  verifier::LNode* const outNode = verifirefox_lir_node_new(node.id(),
-                                                            outOperation,
-                                                            numOperands,
-                                                            numDefs, numTemps,
-                                                            numSuccessors);
+  const size_t numSuccessors =
+      nextNode
+          ? 1
+          : node.block()->mir()->numSuccessors();
+
+  verifier::LirNode* const outNode = verifirefox_ast_lir_node_new(
+      outOperation, numOperands, numDefs, numTemps, numPredecessors,
+      numSuccessors, prevNode == nullptr);
 
   for (size_t operandIndex = 0; operandIndex < numOperands; operandIndex++) {
     const LAllocation& operand =
@@ -214,8 +268,8 @@ verifier::LNode* MarshallLNode(const LNode& node) {
             ? *node.toPhi()->getOperand(operandIndex)
             : *node.toInstruction()->getOperand(operandIndex);
 
-    verifier::LAllocation* const outOperand = MarshallLAllocation(operand);
-    verifirefox_lir_node_push_operand(outNode, outOperand);
+    verifier::LirAllocation* const outOperand = MarshallLirAllocation(operand);
+    verifirefox_ast_lir_node_push_operand(outNode, outOperand);
   }
 
   for (size_t defIndex = 0; defIndex < numDefs; ++defIndex) {
@@ -224,8 +278,8 @@ verifier::LNode* MarshallLNode(const LNode& node) {
             ? *node.toPhi()->getDef(defIndex)
             : *node.toInstruction()->getDef(defIndex);
 
-    verifier::LDefinition* const outDef = MarshallLDefinition(def);
-    verifirefox_lir_node_push_def(outNode, outDef);
+    verifier::LirDefinition* const outDef = MarshallLirDefinition(def);
+    verifirefox_ast_lir_node_push_def(outNode, outDef);
   }
 
   if (node.isInstruction()) {
@@ -233,55 +287,102 @@ verifier::LNode* MarshallLNode(const LNode& node) {
 
     for (size_t tempIndex = 0; tempIndex < numTemps; ++tempIndex) {
       const LDefinition& temp = *instruction.getTemp(tempIndex);
-      verifier::LDefinition* const outTemp = MarshallLDefinition(temp);
-      verifirefox_lir_node_push_temp(outNode, outTemp);
+      verifier::LirDefinition* const outTemp = MarshallLirDefinition(temp);
+      verifirefox_ast_lir_node_push_temp(outNode, outTemp);
     }
+  }
 
+  if (prevNode) {
+    verifirefox_ast_lir_node_push_predecessor(outNode, prevNode->id());
+  } else {
+    const MBasicBlock& mirBlock = *node.block()->mir();
+    for (size_t predecessorIndex = 0;
+         predecessorIndex < numPredecessors;
+         ++predecessorIndex) {
+      const MBasicBlock& predecessorMirBlock =
+          *mirBlock.getPredecessor(predecessorIndex);
+      verifirefox_ast_lir_node_push_predecessor(
+          outNode, predecessorMirBlock.lir()->lastId());
+    }
+  }
+
+  if (nextNode) {
+    verifirefox_ast_lir_node_push_successor(outNode, nextNode->id());
+  } else {
+    const MBasicBlock& mirBlock = *node.block()->mir();
     for (size_t successorIndex = 0;
          successorIndex < numSuccessors;
          ++successorIndex) {
-      const MBasicBlock& successor = *instruction.getSuccessor(successorIndex);
-      verifirefox_lir_node_push_successor(outNode, successor.id());
+      MBasicBlock& successorMirBlock =
+          *mirBlock.getSuccessor(successorIndex);
+      verifirefox_ast_lir_node_push_successor(outNode,
+                                          successorMirBlock.lir()->firstId());
     }
   }
 
   return outNode;
 }
 
-verifier::LBlock* MarshallLBlock(const LBlock& block) {
-  const MBasicBlock& mirBlock = *block.mir();
+void MarshallLirNodes(verifier::LirGraph* const outGraph, const LBlock& block) {
+  const LNode* prevNode = nullptr;
 
   const size_t numPhis = block.numPhis();
 
-  verifier::LBlock* const outBlock = verifirefox_lir_block_new(mirBlock.id(),
-                                                               numPhis);
+  size_t nextPhiIndex = 0;
+  const LPhi* nextPhi =
+      nextPhiIndex < numPhis
+          ? block.getPhi(nextPhiIndex)
+          : nullptr;
 
-  for (size_t phiIndex = 0; phiIndex < numPhis; ++phiIndex) {
-    const LPhi& node = *block.getPhi(phiIndex);
-    verifier::LNode* const outNode = MarshallLNode(node);
-    verifirefox_lir_block_push_node(outBlock, outNode);
+  while (nextPhi) {
+    const LPhi& phi = *nextPhi;
+
+    ++nextPhiIndex;
+    nextPhi =
+        nextPhiIndex < numPhis
+            ? block.getPhi(nextPhiIndex)
+            : nullptr;
+
+    const LNode* const nextNode =
+        nextPhi
+            ? static_cast<const LNode*>(nextPhi)
+            : static_cast<const LNode*>(*block.begin());
+
+    verifier::LirNode* const outNode = MarshallLirNode(phi, prevNode, nextNode);
+    verifirefox_ast_lir_graph_put_node(outGraph, phi.id(), outNode);
+
+    prevNode = &phi;
   }
 
   for (LInstructionIterator instructionIterator(block.begin());
        instructionIterator != block.end();
-       instructionIterator++) {
-    const LInstruction& node = **instructionIterator;
-    verifier::LNode* const outNode = MarshallLNode(node);
-    verifirefox_lir_block_push_node(outBlock, outNode);
-  }
+       ++instructionIterator) {
+    const LInstruction& instruction = **instructionIterator;
 
-  return outBlock;
+    ++instructionIterator;
+    const LNode* const nextNode =
+        instructionIterator == block.end()
+            ? nullptr
+            : *instructionIterator;
+    --instructionIterator;
+
+    verifier::LirNode* const outNode = MarshallLirNode(instruction, prevNode,
+                                                       nextNode);
+    verifirefox_ast_lir_graph_put_node(outGraph, instruction.id(), outNode);
+
+    prevNode = &instruction;
+  }
 }
 
-verifier::LIRGraph* verifier::MarshallLIRGraph(const jit::LIRGraph& graph) {
-  LIRGraph* const outGraph = verifirefox_lir_graph_new(graph.numBlocks());
+verifier::LIRGraph verifier::MarshallLirGraph(
+    const jit::LIRGraph& graph) {
+  LirGraph* const outGraph =
+      verifirefox_ast_lir_graph_new(graph.numInstructions());
 
   for (size_t blockIndex = 0; blockIndex < graph.numBlocks(); ++blockIndex) {
     const jit::LBlock& block = *graph.getBlock(blockIndex);
-    LBlock* const outBlock = MarshallLBlock(block);
-    // TODO: Check result.
-    verifirefox_lir_graph_put_block(outGraph, outBlock);
+    MarshallLirNodes(outGraph, block);
   }
 
-  return outGraph;
+  return LIRGraph(verifirefox_ast_lir_graph_into_handle(outGraph));
 }

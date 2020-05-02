@@ -409,7 +409,7 @@ bool BacktrackingAllocator::init() {
 
       for (size_t j = 0; j < ins->numDefs(); j++) {
         LDefinition* def = ins->getDef(j);
-        if (def->isBogusTemp()) {
+        if (def->isBogus()) {
           continue;
         }
         vreg(def).init(*ins, def, /* isTemp = */ false);
@@ -417,7 +417,7 @@ bool BacktrackingAllocator::init() {
 
       for (size_t j = 0; j < ins->numTemps(); j++) {
         LDefinition* def = ins->getTemp(j);
-        if (def->isBogusTemp()) {
+        if (def->isBogus()) {
           continue;
         }
         vreg(def).init(*ins, def, /* isTemp = */ true);
@@ -621,7 +621,7 @@ bool BacktrackingAllocator::buildLivenessInfo() {
 
       for (size_t i = 0; i < ins->numDefs(); i++) {
         LDefinition* def = ins->getDef(i);
-        if (def->isBogusTemp()) {
+        if (def->isBogus()) {
           continue;
         }
 
@@ -650,7 +650,7 @@ bool BacktrackingAllocator::buildLivenessInfo() {
 
       for (size_t i = 0; i < ins->numTemps(); i++) {
         LDefinition* temp = ins->getTemp(i);
-        if (temp->isBogusTemp()) {
+        if (temp->isBogus()) {
           continue;
         }
 
@@ -704,7 +704,7 @@ bool BacktrackingAllocator::buildLivenessInfo() {
           if (ins->isCall() && use->usedAtStart()) {
             for (size_t i = 0; i < ins->numTemps(); i++) {
               MOZ_ASSERT_IF(
-                  !ins->getTemp(i)->isBogusTemp(),
+                  !ins->getTemp(i)->isBogus(),
                   vreg(ins->getTemp(i)).type() != vreg(use).type() ||
                       (use->isFixedRegister() && ins->getTemp(i)->isFixed()));
             }
@@ -1216,8 +1216,12 @@ bool BacktrackingAllocator::mergeAndQueueRegisters() {
     }
 
     if (reg.def()->policy() == LDefinition::MUST_REUSE_INPUT) {
-      LUse* use = reg.ins()
-                      ->toInstruction()
+      LNode* ins = reg.ins();
+      if (ins->isPhi()) {
+        // Phis will be handled below.
+        continue;
+      }
+      LUse* use = ins->toInstruction()
                       ->getOperand(reg.def()->getReusedInput())
                       ->toUse();
       if (!tryMergeReusedRegister(reg, vreg(use))) {
@@ -2057,7 +2061,8 @@ bool BacktrackingAllocator::resolveControlFlow() {
         LiveRange* from = vreg(input).rangeFor(exitOf(predecessor),
                                                /* preferRegister = */ true);
         MOZ_ASSERT(from);
-        *input = from->bundle()->allocation();
+
+        *input = to->bundle()->allocation();
 
         if (!alloc().ensureBallast()) {
           return false;

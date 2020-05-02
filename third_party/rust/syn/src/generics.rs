@@ -28,9 +28,6 @@ ast_enum_of_structs! {
     /// This type is a [syntax tree enum].
     ///
     /// [syntax tree enum]: enum.Expr.html#syntax-tree-enums
-    //
-    // TODO: change syntax-tree-enum link to an intra rustdoc link, currently
-    // blocked on https://github.com/rust-lang/rust/issues/62833
     pub enum GenericParam {
         /// A generic type parameter: `T: Into<String>`.
         Type(TypeParam),
@@ -314,9 +311,8 @@ impl Generics {
     /// # use proc_macro2::{Span, Ident};
     /// # use quote::quote;
     /// #
-    /// # fn main() {
-    /// #     let generics: syn::Generics = Default::default();
-    /// #     let name = Ident::new("MyType", Span::call_site());
+    /// # let generics: syn::Generics = Default::default();
+    /// # let name = Ident::new("MyType", Span::call_site());
     /// #
     /// let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     /// quote! {
@@ -324,8 +320,7 @@ impl Generics {
     ///         // ...
     ///     }
     /// }
-    /// #     ;
-    /// # }
+    /// # ;
     /// ```
     ///
     /// *This method is available if Syn is built with the `"derive"` or
@@ -450,9 +445,6 @@ ast_enum_of_structs! {
     /// This type is a [syntax tree enum].
     ///
     /// [syntax tree enum]: enum.Expr.html#syntax-tree-enums
-    //
-    // TODO: change syntax-tree-enum link to an intra rustdoc link, currently
-    // blocked on https://github.com/rust-lang/rust/issues/62833
     pub enum WherePredicate {
         /// A type predicate in a `where` clause: `for<'c> Foo<'c>: Trait<'c>`.
         Type(PredicateType),

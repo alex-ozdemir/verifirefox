@@ -556,10 +556,10 @@ void LIRGenerator::visitCompareExchangeTypedArrayElement(
   const LAllocation newval = useRegister(ins->newval());
   const LAllocation oldval = useRegister(ins->oldval());
 
-  LDefinition outTemp = LDefinition::BogusTemp();
-  LDefinition valueTemp = LDefinition::BogusTemp();
-  LDefinition offsetTemp = LDefinition::BogusTemp();
-  LDefinition maskTemp = LDefinition::BogusTemp();
+  LDefinition outTemp = LDefinition::Bogus();
+  LDefinition valueTemp = LDefinition::Bogus();
+  LDefinition offsetTemp = LDefinition::Bogus();
+  LDefinition maskTemp = LDefinition::Bogus();
 
   if (ins->arrayType() == Scalar::Uint32 && IsFloatingPointType(ins->type())) {
     outTemp = temp();
@@ -593,10 +593,10 @@ void LIRGenerator::visitAtomicExchangeTypedArrayElement(
   // CodeGenerator level for creating the result.
 
   const LAllocation value = useRegister(ins->value());
-  LDefinition outTemp = LDefinition::BogusTemp();
-  LDefinition valueTemp = LDefinition::BogusTemp();
-  LDefinition offsetTemp = LDefinition::BogusTemp();
-  LDefinition maskTemp = LDefinition::BogusTemp();
+  LDefinition outTemp = LDefinition::Bogus();
+  LDefinition valueTemp = LDefinition::Bogus();
+  LDefinition offsetTemp = LDefinition::Bogus();
+  LDefinition maskTemp = LDefinition::Bogus();
 
   if (ins->arrayType() == Scalar::Uint32) {
     MOZ_ASSERT(ins->type() == MIRType::Double);
@@ -627,9 +627,9 @@ void LIRGenerator::visitWasmCompareExchangeHeap(MWasmCompareExchangeHeap* ins) {
     return;
   }
 
-  LDefinition valueTemp = LDefinition::BogusTemp();
-  LDefinition offsetTemp = LDefinition::BogusTemp();
-  LDefinition maskTemp = LDefinition::BogusTemp();
+  LDefinition valueTemp = LDefinition::Bogus();
+  LDefinition offsetTemp = LDefinition::Bogus();
+  LDefinition maskTemp = LDefinition::Bogus();
 
   if (ins->access().byteSize() < 4) {
     valueTemp = temp();
@@ -654,9 +654,9 @@ void LIRGenerator::visitWasmAtomicExchangeHeap(MWasmAtomicExchangeHeap* ins) {
     return;
   }
 
-  LDefinition valueTemp = LDefinition::BogusTemp();
-  LDefinition offsetTemp = LDefinition::BogusTemp();
-  LDefinition maskTemp = LDefinition::BogusTemp();
+  LDefinition valueTemp = LDefinition::Bogus();
+  LDefinition offsetTemp = LDefinition::Bogus();
+  LDefinition maskTemp = LDefinition::Bogus();
 
   if (ins->access().byteSize() < 4) {
     valueTemp = temp();
@@ -684,9 +684,9 @@ void LIRGenerator::visitWasmAtomicBinopHeap(MWasmAtomicBinopHeap* ins) {
     return;
   }
 
-  LDefinition valueTemp = LDefinition::BogusTemp();
-  LDefinition offsetTemp = LDefinition::BogusTemp();
-  LDefinition maskTemp = LDefinition::BogusTemp();
+  LDefinition valueTemp = LDefinition::Bogus();
+  LDefinition offsetTemp = LDefinition::Bogus();
+  LDefinition maskTemp = LDefinition::Bogus();
 
   if (ins->access().byteSize() < 4) {
     valueTemp = temp();
@@ -723,9 +723,9 @@ void LIRGenerator::visitAtomicTypedArrayElementBinop(
   const LAllocation index = useRegisterOrConstant(ins->index());
   const LAllocation value = useRegister(ins->value());
 
-  LDefinition valueTemp = LDefinition::BogusTemp();
-  LDefinition offsetTemp = LDefinition::BogusTemp();
-  LDefinition maskTemp = LDefinition::BogusTemp();
+  LDefinition valueTemp = LDefinition::Bogus();
+  LDefinition offsetTemp = LDefinition::Bogus();
+  LDefinition maskTemp = LDefinition::Bogus();
 
   if (Scalar::byteSize(ins->arrayType()) < 4) {
     valueTemp = temp();
@@ -744,7 +744,7 @@ void LIRGenerator::visitAtomicTypedArrayElementBinop(
   // For a Uint32Array with a known double result we need a temp for
   // the intermediate output.
 
-  LDefinition outTemp = LDefinition::BogusTemp();
+  LDefinition outTemp = LDefinition::Bogus();
 
   if (ins->arrayType() == Scalar::Uint32 && IsFloatingPointType(ins->type())) {
     outTemp = temp();

@@ -57,7 +57,7 @@ bool StupidAllocator::init() {
 
       for (size_t j = 0; j < ins->numTemps(); j++) {
         LDefinition* def = ins->getTemp(j);
-        if (def->isBogusTemp()) {
+        if (def->isBogus()) {
           continue;
         }
         virtualRegisters[def->virtualRegister()] = def;
@@ -370,7 +370,7 @@ void StupidAllocator::allocateForInstruction(LInstruction* ins) {
   // Find registers to hold all temporaries and outputs of the instruction.
   for (size_t i = 0; i < ins->numTemps(); i++) {
     LDefinition* def = ins->getTemp(i);
-    if (!def->isBogusTemp()) {
+    if (!def->isBogus()) {
       allocateForDefinition(ins, def);
     }
   }

@@ -6,36 +6,28 @@
 
 // Interface for calling from C++ into Verifirefox.
 
-// The functions declared here are implemented in src/lib.rs.
+// The functions declared here are implemented in rust/src/lib.rs.
 
 #ifndef jit_verifier_VerifierBindings_h
 #define jit_verifier_VerifierBindings_h
 
+#include <stddef.h>
 #include <stdint.h>
 
 namespace js {
 namespace jit {
 namespace verifier {
 
+typedef void (*FailCallback)();
+
 typedef uint32_t ArgumentIndex;
-typedef uint32_t PhysicalReg;
+typedef uint32_t PhysicalRegCode;
 typedef uint32_t StackSlotIndex;
 typedef uint32_t VirtualReg;
 
-typedef uint32_t LBlockId;
-typedef uint32_t LNodeId;
+struct PhysicalLoc;
 
-struct LIRGraph;
-struct LBlock;
-struct LNode;
-struct LOperation;
-struct LMoveGroup;
-struct LMove;
-struct LDefinition;
-struct LAllocation;
-struct LUse;
-
-enum class LDefinitionType : uint8_t {
+enum class LirType : uint8_t {
   GENERAL = 0,
   INT32 = 1,
   OBJECT = 2,
@@ -49,19 +41,18 @@ enum class LDefinitionType : uint8_t {
   BOX = 10,
 };
 
-enum class LDefinitionPolicy : uint8_t {
-  FIXED = 0,
-  REGISTER = 1,
-  MUST_REUSE_INPUT = 2,
-};
+typedef uint32_t LirNodeId;
 
-enum class LUsePolicy : uint8_t {
-  ANY = 0,
-  REGISTER = 1,
-  FIXED = 2,
-  KEEPALIVE = 3,
-  RECOVERED_INPUT = 4,
-};
+struct LirGraph;
+struct LirNode;
+struct LirOperation;
+struct LirMoveGroup;
+struct LirMove;
+struct LirDefinition;
+struct LirAllocation;
+struct LirUseInfo;
+
+typedef const LirGraph* LirGraphHandle;
 
 }  // namespace verifier
 }  // namespace jit
@@ -69,97 +60,143 @@ enum class LUsePolicy : uint8_t {
 
 extern "C" {
 
-// LIRGraph bindings
+void verifirefox_execute_init(js::jit::verifier::FailCallback failCb);
 
-js::jit::verifier::LIRGraph* verifirefox_lir_graph_new(uint32_t blockCount);
+// PhysicalLoc bindings
 
-void verifirefox_lir_graph_drop(js::jit::verifier::LIRGraph* graph);
+js::jit::verifier::PhysicalLoc*
+verifirefox_ast_lir_physical_loc_new_general_reg(
+    js::jit::verifier::PhysicalRegCode physicalRegCode);
 
-bool verifirefox_lir_graph_put_block(js::jit::verifier::LIRGraph* graph,
-                                     js::jit::verifier::LBlock* block);
+js::jit::verifier::PhysicalLoc* verifirefox_ast_lir_physical_loc_new_float_reg(
+    js::jit::verifier::PhysicalRegCode physicalRegCode);
 
-// LBlock bindings
-
-js::jit::verifier::LBlock* verifirefox_lir_block_new(
-    js::jit::verifier::LBlockId id, size_t nodeCapacity);
-
-void verifirefox_lir_block_push_node(js::jit::verifier::LBlock* block,
-                                     js::jit::verifier::LNode* node);
-
-// LNode bindings
-
-js::jit::verifier::LNode* verifirefox_lir_node_new(
-    js::jit::verifier::LNodeId id, js::jit::verifier::LOperation* operation,
-    size_t operandCapacity, size_t defCapacity, size_t tempCapacity,
-    size_t successorCapacity);
-
-void verifirefox_lir_node_push_operand(js::jit::verifier::LNode* node,
-                                       js::jit::verifier::LAllocation* operand);
-
-void verifirefox_lir_node_push_def(js::jit::verifier::LNode* node,
-                                   js::jit::verifier::LDefinition* def);
-
-void verifirefox_lir_node_push_temp(js::jit::verifier::LNode* node,
-                                    js::jit::verifier::LDefinition* temp);
-
-void verifirefox_lir_node_push_successor(js::jit::verifier::LNode* node,
-                                         js::jit::verifier::LBlockId successor);
-
-// LOperation bindings
-
-js::jit::verifier::LOperation* verifirefox_lir_operation_new_move_group(
-    js::jit::verifier::LMoveGroup* moveGroup);
-
-// LMoveGroup bindings
-
-js::jit::verifier::LMoveGroup* verifirefox_lir_move_group_new(
-    size_t moveCapacity);
-
-void verifirefox_lir_move_group_push_move(
-    js::jit::verifier::LMoveGroup* moveGroup, js::jit::verifier::LMove* move);
-
-// LMove bindings
-
-js::jit::verifier::LMove* verifirefox_lir_move_new(
-    js::jit::verifier::LAllocation* from,
-    js::jit::verifier::LAllocation* to,
-    js::jit::verifier::LDefinitionType type);
-
-// LDefinition bindings
-
-js::jit::verifier::LDefinition* verifirefox_lir_definition_new(
-    js::jit::verifier::VirtualReg virtualReg,
-    js::jit::verifier::LDefinitionType type,
-    js::jit::verifier::LDefinitionPolicy policy,
-    js::jit::verifier::LAllocation* output);
-
-// LAllocation bindings
-
-js::jit::verifier::LAllocation* verifirefox_lir_allocation_new_use(
-    js::jit::verifier::LUsePolicy policy,
-    js::jit::verifier::VirtualReg virtualReg,
-    js::jit::verifier::PhysicalReg physicalReg,
-    bool usedAtStart);
-
-js::jit::verifier::LAllocation* verifirefox_lir_allocation_new_general_reg(
-    js::jit::verifier::PhysicalReg physicalReg);
-
-js::jit::verifier::LAllocation* verifirefox_lir_allocation_new_float_reg(
-    js::jit::verifier::PhysicalReg physicalReg);
-
-js::jit::verifier::LAllocation* verifirefox_lir_allocation_new_stack_slot(
+js::jit::verifier::PhysicalLoc* verifirefox_ast_lir_physical_loc_new_stack_slot(
     js::jit::verifier::StackSlotIndex stackSlotIndex);
 
-js::jit::verifier::LAllocation* verifirefox_lir_allocation_new_argument(
+js::jit::verifier::PhysicalLoc* verifirefox_ast_lir_physical_loc_new_argument(
     js::jit::verifier::ArgumentIndex argumentIndex);
 
-js::jit::verifier::LAllocation* verifirefox_lir_allocation_new_other();
+// LirGraph bindings
 
-// Pass verification bindings
+js::jit::verifier::LirGraph* verifirefox_ast_lir_graph_new(
+    uint32_t nodeCapacity);
 
-bool verifirefox_verify_reg_allocation_pass(
-    const js::jit::verifier::LIRGraph* beforeGraph,
-    const js::jit::verifier::LIRGraph* afterGraph);
+void verifirefox_ast_lir_graph_drop(js::jit::verifier::LirGraph* graph);
+
+void verifirefox_ast_lir_graph_put_node(js::jit::verifier::LirGraph* graph,
+                                    js::jit::verifier::LirNodeId nodeId,
+                                    js::jit::verifier::LirNode* node);
+
+js::jit::verifier::LirGraphHandle verifirefox_ast_lir_graph_into_handle(
+    js::jit::verifier::LirGraph* graph);
+
+js::jit::verifier::LirGraphHandle verifirefox_ast_lir_graph_clone_handle(
+    const js::jit::verifier::LirGraphHandle* graph_handle);
+
+void verifirefox_ast_lir_graph_drop_handle(
+    js::jit::verifier::LirGraphHandle graph_handle);
+
+// LirNode bindings
+
+js::jit::verifier::LirNode* verifirefox_ast_lir_node_new(
+    js::jit::verifier::LirOperation* operation, size_t operandCapacity,
+    size_t defCapacity, size_t tempCapacity, size_t predecessorCapacity,
+    size_t successorCapacity, bool isAtBlockStart);
+
+void verifirefox_ast_lir_node_push_operand(
+    js::jit::verifier::LirNode* node,
+    js::jit::verifier::LirAllocation* operand);
+
+void verifirefox_ast_lir_node_push_def(js::jit::verifier::LirNode* node,
+                                       js::jit::verifier::LirDefinition* def);
+
+void verifirefox_ast_lir_node_push_temp(js::jit::verifier::LirNode* node,
+                                        js::jit::verifier::LirDefinition* temp);
+
+void verifirefox_ast_lir_node_push_predecessor(
+    js::jit::verifier::LirNode* node,
+    js::jit::verifier::LirNodeId predecessorNodeId);
+
+void verifirefox_ast_lir_node_push_successor(
+    js::jit::verifier::LirNode* node,
+    js::jit::verifier::LirNodeId successorNodeId);
+
+// LirOperation bindings
+
+js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_move_group(
+    js::jit::verifier::LirMoveGroup* moveGroup);
+
+js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_phi();
+
+// LirMoveGroup bindings
+
+js::jit::verifier::LirMoveGroup* verifirefox_ast_lir_move_group_new(
+    size_t moveCapacity);
+
+void verifirefox_ast_lir_move_group_push_move(
+    js::jit::verifier::LirMoveGroup* moveGroup,
+    js::jit::verifier::LirMove* move);
+
+// LirMove bindings
+
+js::jit::verifier::LirMove* verifirefox_ast_lir_move_new(
+    js::jit::verifier::LirAllocation* from,
+    js::jit::verifier::LirAllocation* to,
+    js::jit::verifier::LirType type);
+
+// LirDefinition bindings
+
+js::jit::verifier::LirDefinition*
+verifirefox_ast_lir_definition_new_with_reg_policy(
+    js::jit::verifier::VirtualReg virtualReg,
+    js::jit::verifier::LirType type);
+
+js::jit::verifier::LirDefinition*
+verifirefox_ast_lir_definition_new_with_reuse_input_policy(
+    js::jit::verifier::VirtualReg virtualReg,
+    js::jit::verifier::LirType type,
+    size_t input);
+
+js::jit::verifier::LirDefinition*
+verifirefox_ast_lir_definition_new_with_fixed_policy(
+    js::jit::verifier::VirtualReg virtualReg,
+    js::jit::verifier::LirType type,
+    js::jit::verifier::PhysicalLoc* physicalLoc);
+
+// LirAllocation bindings
+
+js::jit::verifier::LirAllocation* verifirefox_ast_lir_allocation_new_bogus();
+
+js::jit::verifier::LirAllocation* verifirefox_ast_lir_allocation_new_constant();
+
+js::jit::verifier::LirAllocation* verifirefox_ast_lir_allocation_new_static(
+    js::jit::verifier::PhysicalLoc* physicalLoc,
+    js::jit::verifier::LirUseInfo* useInfo);
+
+js::jit::verifier::LirAllocation* verifirefox_ast_lir_allocation_new_dynamic(
+    js::jit::verifier::LirUseInfo* useInfo);
+
+// LirUseInfo bindings
+
+js::jit::verifier::LirUseInfo* verifirefox_ast_lir_use_info_new_with_any_policy(
+    js::jit::verifier::VirtualReg virtualReg,
+    bool isUsedAtStart,
+    bool isRecoveredInput);
+
+js::jit::verifier::LirUseInfo* verifirefox_ast_lir_use_info_new_with_reg_policy(
+    js::jit::verifier::VirtualReg virtualReg,
+    bool isUsedAtStart);
+
+// RegAllocPass bindings
+
+void verifirefox_passes_reg_alloc_sync(
+    const js::jit::verifier::LirGraphHandle beforeGraph,
+    const js::jit::verifier::LirGraphHandle afterGraph);
+
+void verifirefox_passes_reg_alloc_async(
+    const js::jit::verifier::LirGraphHandle beforeGraph,
+    const js::jit::verifier::LirGraphHandle afterGraph);
 
 }  // extern "C"
 

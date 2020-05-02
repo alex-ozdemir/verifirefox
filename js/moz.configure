@@ -381,6 +381,14 @@ def more_deterministic(value):
 
 set_define('JS_MORE_DETERMINISTIC', more_deterministic)
 
+js_option('--enable-verifirefox',
+          default=False,
+          help='{Enable|Disable} the JavaScript JIT runtime verifier')
+
+set_define('JS_VERIFIER',
+           depends_if('--enable-verifirefox')(lambda _: True))
+set_config('JS_VERIFIER',
+           depends_if('--enable-verifirefox')(lambda _: True))
 
 # CTypes
 # =======================================================

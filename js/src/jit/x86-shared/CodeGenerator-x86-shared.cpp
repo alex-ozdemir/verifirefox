@@ -717,7 +717,7 @@ void CodeGenerator::visitPopcntI(LPopcntI* ins) {
   Register input = ToRegister(ins->input());
   Register output = ToRegister(ins->output());
   Register temp =
-      ins->temp()->isBogusTemp() ? InvalidReg : ToRegister(ins->temp());
+      ins->temp()->isBogus() ? InvalidReg : ToRegister(ins->temp());
 
   masm.popcnt32(input, output, temp);
 }
@@ -2470,7 +2470,7 @@ void CodeGenerator::visitCompareExchangeTypedArrayElement(
   Register elements = ToRegister(lir->elements());
   AnyRegister output = ToAnyRegister(lir->output());
   Register temp =
-      lir->temp()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp());
+      lir->temp()->isBogus() ? InvalidReg : ToRegister(lir->temp());
 
   Register oldval = ToRegister(lir->oldval());
   Register newval = ToRegister(lir->newval());
@@ -2495,7 +2495,7 @@ void CodeGenerator::visitAtomicExchangeTypedArrayElement(
   Register elements = ToRegister(lir->elements());
   AnyRegister output = ToAnyRegister(lir->output());
   Register temp =
-      lir->temp()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp());
+      lir->temp()->isBogus() ? InvalidReg : ToRegister(lir->temp());
 
   Register value = ToRegister(lir->value());
 
@@ -2536,9 +2536,9 @@ void CodeGenerator::visitAtomicTypedArrayElementBinop(
   AnyRegister output = ToAnyRegister(lir->output());
   Register elements = ToRegister(lir->elements());
   Register temp1 =
-      lir->temp1()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp1());
+      lir->temp1()->isBogus() ? InvalidReg : ToRegister(lir->temp1());
   Register temp2 =
-      lir->temp2()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp2());
+      lir->temp2()->isBogus() ? InvalidReg : ToRegister(lir->temp2());
   const LAllocation* value = lir->value();
 
   Scalar::Type arrayType = lir->mir()->arrayType();

@@ -345,7 +345,7 @@ void CodeGenerator::visitWasmAtomicBinopHeap(LWasmAtomicBinopHeap* ins) {
 
   Register ptrReg = ToRegister(ins->ptr());
   Register temp =
-      ins->temp()->isBogusTemp() ? InvalidReg : ToRegister(ins->temp());
+      ins->temp()->isBogus() ? InvalidReg : ToRegister(ins->temp());
   Register addrTemp = ToRegister(ins->addrTemp());
   Register out = ToRegister(ins->output());
   const LAllocation* value = ins->value();
@@ -1049,7 +1049,7 @@ void CodeGenerator::visitInt64ToFloatingPoint(LInt64ToFloatingPoint* lir) {
   Register64 input = ToRegister64(lir->getInt64Operand(0));
   FloatRegister output = ToFloatRegister(lir->output());
   Register temp =
-      lir->temp()->isBogusTemp() ? InvalidReg : ToRegister(lir->temp());
+      lir->temp()->isBogus() ? InvalidReg : ToRegister(lir->temp());
 
   MIRType outputType = lir->mir()->type();
   MOZ_ASSERT(outputType == MIRType::Double || outputType == MIRType::Float32);
