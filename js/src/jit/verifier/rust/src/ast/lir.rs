@@ -97,7 +97,15 @@ pub struct LirNode {
 }
 
 impl LirNode {
-    pub fn new(operation: LirOperation, operand_capacity: usize, def_capacity: usize, temp_capacity: usize, predecessor_capacity: usize, successor_capacity: usize, is_at_block_start: bool) -> Self {
+    pub fn new(
+        operation: LirOperation,
+        operand_capacity: usize,
+        def_capacity: usize,
+        temp_capacity: usize,
+        predecessor_capacity: usize,
+        successor_capacity: usize,
+        is_at_block_start: bool,
+    ) -> Self {
         LirNode {
             operation: operation,
             operands: Vec::with_capacity(operand_capacity),
@@ -178,7 +186,9 @@ pub struct LirMoveGroup {
 
 impl LirMoveGroup {
     pub fn new(move_capacity: usize) -> Self {
-        LirMoveGroup { moves: Vec::with_capacity(move_capacity) }
+        LirMoveGroup {
+            moves: Vec::with_capacity(move_capacity),
+        }
     }
 
     pub fn moves(&self) -> &[LirMove] {
@@ -276,9 +286,7 @@ pub struct LirReuseInputDefinitionPolicy {
 
 impl LirReuseInputDefinitionPolicy {
     pub fn new(input: usize) -> Self {
-        LirReuseInputDefinitionPolicy {
-            input: input,
-        }
+        LirReuseInputDefinitionPolicy { input: input }
     }
 
     pub fn input(&self) -> usize {
@@ -358,9 +366,7 @@ pub struct LirDynamicAllocation {
 
 impl LirDynamicAllocation {
     pub fn new(use_info: LirUseInfo) -> Self {
-        LirDynamicAllocation {
-            use_info: use_info,
-        }
+        LirDynamicAllocation { use_info: use_info }
     }
 
     pub fn use_info(&self) -> &LirUseInfo {

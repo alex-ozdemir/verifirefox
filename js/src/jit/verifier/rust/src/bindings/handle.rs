@@ -38,7 +38,9 @@ where
     T: ?Sized,
 {
     fn from(arc: Arc<T>) -> Self {
-        Handle { inner: Arc::into_raw(arc) }
+        Handle {
+            inner: Arc::into_raw(arc),
+        }
     }
 }
 
