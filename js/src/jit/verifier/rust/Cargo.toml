@@ -19,3 +19,4 @@ name = "verifirefox"
 [dependencies]
 anyhow = "^1.0.28"
 thiserror = "^1.0.14"
+typed_index_derive = "^0.1.4"

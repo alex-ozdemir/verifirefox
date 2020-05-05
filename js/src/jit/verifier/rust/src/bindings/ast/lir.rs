@@ -3,11 +3,11 @@
 use std::mem;
 use std::os::raw::c_void;
 
-pub use crate::ast::lir::{ArgumentIndex, LirGraph, LirNodeId, LirType, PhysicalLoc, PhysicalRegCode, StackSlotIndex, VirtualReg};
-
-use crate::ast::lir::{LirAllocation, LirAnyUsePolicy, LirDefinition, LirDefinitionPolicy, LirDynamicAllocation, LirFixedDefinitionPolicy, LirReuseInputDefinitionPolicy, LirMove, LirMoveGroup, LirNode, LirOperation, LirStaticAllocation, LirUseInfo, LirUsePolicy, PhysicalReg};
+use crate::ast::lir::{LirAllocation, LirAnyUsePolicy, LirDefinition, LirDefinitionPolicy, LirDynamicAllocation, LirFixedDefinitionPolicy, LirReuseInputDefinitionPolicy, LirMove, LirMoveGroup, LirNode, LirNodeIndex, LirOperation, LirStaticAllocation, LirUseInfo, LirUsePolicy, PhysicalReg};
 
 use crate::bindings::handle::Handle;
+
+pub use crate::ast::lir::{ArgumentIndex, LirGraph, LirNodeId, LirType, PhysicalLoc, PhysicalRegCode, StackSlotIndex, VirtualReg};
 
 // PhysicalLoc bindings
 
@@ -38,8 +38,9 @@ pub unsafe extern "C" fn verifirefox_ast_lir_physical_loc_new_argument(argument_
 // LirGraph bindings
 
 #[no_mangle]
-pub unsafe extern "C" fn verifirefox_ast_lir_graph_new(node_capacity: LirNodeId) -> *mut LirGraph {
-    let graph = LirGraph::new(node_capacity);
+pub unsafe extern "C" fn verifirefox_ast_lir_graph_new(next_node_id: LirNodeId) -> *mut LirGraph {
+    let node_count: usize = LirNodeIndex::from(next_node_id).into();
+    let graph = (0..node_count).map(|_| LirNode::default()).collect::<Box<[_]>>();
     Box::into_raw(Box::new(graph)) as *mut _
 }
 
@@ -47,7 +48,8 @@ pub unsafe extern "C" fn verifirefox_ast_lir_graph_new(node_capacity: LirNodeId)
 pub unsafe extern "C" fn verifirefox_ast_lir_graph_put_node(graph_ptr: *mut LirGraph, node_id: LirNodeId, node_ptr: *mut c_void) {
     let graph = &mut *(graph_ptr as *mut LirGraph);
     let node = *(Box::<LirNode>::from_raw(node_ptr as *mut _));
-    graph.put(node_id, node);
+    let node_index = LirNodeIndex::from(node_id);
+    graph[node_index] = node;
 }
 
 #[no_mangle]

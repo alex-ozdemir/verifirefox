@@ -1666,7 +1666,7 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
 #ifdef JS_VERIFIER
   verifier::LIRGraph afterGraph = verifier::MarshallLirGraph(*lir);
 
-  verifier::RunRegAllocPassAsync(std::move(beforeGraph), std::move(afterGraph));
+  verifier::RunRegAllocPassSync(std::move(beforeGraph), std::move(afterGraph));
 #endif
 
   return lir;

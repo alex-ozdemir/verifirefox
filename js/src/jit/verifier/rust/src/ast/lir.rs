@@ -1,4 +1,6 @@
-use crate::bag::Bag;
+use std::fmt;
+
+use typed_index_derive::TypedIndex;
 
 pub type VirtualReg = u32;
 pub type PhysicalRegCode = u32;
@@ -53,16 +55,44 @@ pub enum LirType {
 
 pub type LirNodeId = u32;
 
-pub type LirGraph = Bag<LirNodeId, LirNode>;
+#[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Hash, TypedIndex)]
+#[typed_index(LirNode)]
+pub struct LirNodeIndex(usize);
 
-#[derive(Clone, Debug)]
+impl fmt::Debug for LirNodeIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Display for LirNodeIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl From<LirNodeId> for LirNodeIndex {
+    fn from(lir_node_id: LirNodeId) -> Self {
+        LirNodeIndex(lir_node_id as usize - 1)
+    }
+}
+
+impl From<&LirNodeId> for LirNodeIndex {
+    fn from(lir_node_id: &LirNodeId) -> Self {
+        LirNodeIndex::from(*lir_node_id)
+    }
+}
+
+pub type LirGraph = Box<[LirNode]>;
+
+#[derive(Clone, Debug, Default)]
 pub struct LirNode {
     operation: LirOperation,
     operands: Vec<LirAllocation>,
     defs: Vec<Option<LirDefinition>>,
     temps: Vec<Option<LirDefinition>>,
-    predecessors: Vec<LirNodeId>,
-    successors: Vec<LirNodeId>,
+    predecessors: Vec<LirNodeIndex>,
+    successors: Vec<LirNodeIndex>,
     is_at_block_start: bool,
 }
 
@@ -107,20 +137,20 @@ impl LirNode {
         self.temps.push(temp);
     }
 
-    pub fn predecessors(&self) -> &[LirNodeId] {
+    pub fn predecessors(&self) -> &[LirNodeIndex] {
         &self.predecessors
     }
 
     pub fn push_predecessor(&mut self, predecessor_node_id: LirNodeId) {
-        self.predecessors.push(predecessor_node_id);
+        self.predecessors.push(predecessor_node_id.into());
     }
 
-    pub fn successors(&self) -> &[LirNodeId] {
+    pub fn successors(&self) -> &[LirNodeIndex] {
         &self.successors
     }
 
     pub fn push_successor(&mut self, successor_node_id: LirNodeId) {
-        self.successors.push(successor_node_id);
+        self.successors.push(successor_node_id.into());
     }
 
     pub fn is_at_block_start(&self) -> bool {
@@ -133,6 +163,12 @@ pub enum LirOperation {
     MoveGroup(LirMoveGroup),
     Phi,
     Other,
+}
+
+impl Default for LirOperation {
+    fn default() -> Self {
+        LirOperation::Other
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -235,7 +271,6 @@ impl LirDefinitionPolicy {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LirReuseInputDefinitionPolicy {
-    // TODO: This is represented with a u32 on the C++ side.
     input: usize,
 }
 
