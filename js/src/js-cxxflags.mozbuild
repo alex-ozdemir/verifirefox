@@ -7,6 +7,9 @@
 # ICU pkg-config flags
 CXXFLAGS += CONFIG['MOZ_ICU_CFLAGS']
 
+# Hack to avoid undefined shm_open
+LDFLAGS += ['-lrt']
+
 if CONFIG['CC_TYPE'] in ('clang', 'gcc'):
     # Also disable strict-aliasing for GCC compiler, that is enabled by default
     # starting with version 7.1, see Bug 1363009
