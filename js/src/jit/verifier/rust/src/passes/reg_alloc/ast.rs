@@ -181,21 +181,65 @@ impl RegAllocMapping {
     }
 }
 
-pub type RegAllocGraph = Box<[RegAllocNode]>;
+#[derive(Clone, Debug)]
+pub struct RegAllocGraph {
+    pub nodes: Box<[RegAllocNode]>,
+    queue_head_index: Option<RegAllocNodeIndex>,
+    queue_tail_index: Option<RegAllocNodeIndex>,
+}
 
-pub fn reg_alloc_graph_from_lir(
-    before_graph: &LirGraph,
-    after_graph: &LirGraph,
-) -> Result<RegAllocGraph, Error> {
-    after_graph
-        .iter()
-        .enumerate()
-        .map(|(raw_node_index, after_node)| {
-            let maybe_before_node = LirNodeIndex::from(raw_node_index).get(before_graph);
-            RegAllocNode::from_lir(maybe_before_node, after_node)
-                .with_context(|| format!("Invalid data for LIR node {}", raw_node_index))
+impl RegAllocGraph {
+    pub fn from_lir(before_graph: &LirGraph, after_graph: &LirGraph) -> Result<Self, Error> {
+        let nodes = after_graph
+            .iter()
+            .enumerate()
+            .map(|(raw_node_index, after_node)| {
+                let maybe_before_node = LirNodeIndex::from(raw_node_index).get(before_graph);
+                RegAllocNode::from_lir(maybe_before_node, after_node)
+                    .with_context(|| format!("Invalid data for LIR node {}", raw_node_index))
+            })
+            .collect::<Result<Box<_>, _>>()?;
+
+        Ok(RegAllocGraph {
+            nodes,
+            queue_head_index: None,
+            queue_tail_index: None,
         })
-        .collect::<Result<Box<_>, _>>()
+    }
+
+    pub fn queue_push(&mut self, node_index: RegAllocNodeIndex) {
+        let node = &mut self.nodes[node_index];
+        if node.is_in_queue {
+            return;
+        }
+        node.is_in_queue = true;
+
+        match self.queue_tail_index {
+            Some(queue_tail_index) => {
+                self.nodes[queue_tail_index].queue_next_index = Some(node_index);
+                self.queue_tail_index = Some(node_index);
+            }
+            None => {
+                self.queue_head_index = Some(node_index);
+                self.queue_tail_index = Some(node_index);
+            }
+        }
+    }
+
+    pub fn queue_pop(&mut self) -> Option<RegAllocNodeIndex> {
+        let queue_head_index = self.queue_head_index?;
+        if self.queue_tail_index == Some(queue_head_index) {
+            self.queue_tail_index = None;
+        }
+
+        let queue_head = &mut self.nodes[queue_head_index];
+        queue_head.is_in_queue = false;
+
+        self.queue_head_index = queue_head.queue_next_index;
+        queue_head.queue_next_index = None;
+
+        Some(queue_head_index)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -203,8 +247,10 @@ pub struct RegAllocNode {
     pub operation: RegAllocOperation,
     pub predecessors: RegAllocPredecessors,
     pub successors: Box<[RegAllocNodeIndex]>,
-    pub state: RegAllocState,
+    pub state: Option<RegAllocState>,
     pub has_complete_state: bool,
+    is_in_queue: bool,
+    queue_next_index: Option<RegAllocNodeIndex>,
 }
 
 impl RegAllocNode {
@@ -220,8 +266,10 @@ impl RegAllocNode {
                 .iter()
                 .map(RegAllocNodeIndex::from)
                 .collect(),
-            state: RegAllocState::new(),
+            state: None,
             has_complete_state: false,
+            is_in_queue: false,
+            queue_next_index: None,
         })
     }
 }

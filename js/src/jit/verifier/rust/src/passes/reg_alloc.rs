@@ -7,7 +7,7 @@
 
 mod ast;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::error;
 use std::sync::Arc;
 
@@ -18,9 +18,7 @@ use crate::ast::lir::LirGraph;
 
 use crate::passes::base::Pass;
 
-use crate::passes::reg_alloc::ast::{
-    reg_alloc_graph_from_lir, Possibility, RegAllocGraph, RegAllocPredecessors,
-};
+use crate::passes::reg_alloc::ast::{Possibility, RegAllocGraph, RegAllocPredecessors};
 
 pub use crate::passes::reg_alloc::ast::{RegAllocNodeIndex, RegAllocState};
 
@@ -41,7 +39,7 @@ impl RegAllocPass {
 
 impl Pass for RegAllocPass {
     fn run(&self) -> Result<(), Error> {
-        let mut graph = reg_alloc_graph_from_lir(&*self.before_graph, &*self.after_graph)?;
+        let mut graph = RegAllocGraph::from_lir(&*self.before_graph, &*self.after_graph)?;
 
         find_fixpoint(&mut graph, false)?;
         find_fixpoint(&mut graph, true)?;
@@ -52,7 +50,7 @@ impl Pass for RegAllocPass {
 }
 
 #[derive(Clone, Debug, Error)]
-#[error("error at node #{node_index}")]
+#[error("error at node {node_index}")]
 pub struct RegAllocError<Source>
 where
     Source: 'static + error::Error,
@@ -78,18 +76,15 @@ fn find_fixpoint(
     eprintln!("{} find_fixpoint on {}", prefix, graph_size);
     */
 
-    let mut dirty = graph
-        .iter()
-        .enumerate()
-        .filter_map(|(raw_node_index, node)| match node.predecessors {
-            RegAllocPredecessors::AtBlockStart(_) => Some(raw_node_index.into()),
-            RegAllocPredecessors::InBlockBody(_) => None,
-        })
-        .collect::<VecDeque<RegAllocNodeIndex>>();
+    for node_index in (0..graph.nodes.len()).map(RegAllocNodeIndex::from) {
+        if let RegAllocPredecessors::AtBlockStart(_) = graph.nodes[node_index].predecessors {
+            graph.queue_push(node_index);
+        }
+    }
 
     loop {
-        let node_index = match dirty.pop_front() {
-            Some(item) => item,
+        let node_index = match graph.queue_pop() {
+            Some(node_index) => node_index,
             None => break,
         };
 
@@ -100,11 +95,11 @@ fn find_fixpoint(
         }
         */
 
-        let mut state = meet(graph, &graph[node_index].predecessors, strict_meet);
+        let mut state = meet(graph, &graph.nodes[node_index].predecessors, strict_meet);
 
-        let node = &mut graph[node_index];
+        let node = &mut graph.nodes[node_index];
 
-        let state_is_complete = match node.operation.judge(&state) {
+        node.has_complete_state = match node.operation.judge(&state) {
             Possibility::Known(_) => true,
             Possibility::Unknown => false,
             Possibility::Invalid => {
@@ -119,17 +114,13 @@ fn find_fixpoint(
 
         node.operation.transfer(&mut state);
 
-        if state != node.state {
-            //dirty.extend(node.successors.iter());
-            for successor in node.successors.iter() {
-                if !dirty.contains(successor) {
-                    dirty.push_back(*successor);
-                }
-            }
-            node.state = state;
-        }
+        if node.state.as_ref() != Some(&state) {
+            node.state = Some(state);
 
-        node.has_complete_state = state_is_complete;
+            for successor in *node.successors.to_owned().iter() {
+                graph.queue_push(*successor);
+            }
+        }
     }
 
     //eprintln!("{} end {} on {}", prefix, iterations, graph_size);
@@ -146,7 +137,7 @@ pub struct RegAllocCompletenessError {
 fn check_graph_completeness(
     graph: &RegAllocGraph,
 ) -> Result<(), RegAllocError<RegAllocCompletenessError>> {
-    for (raw_node_index, node) in graph.iter().enumerate() {
+    for (raw_node_index, node) in graph.nodes.iter().enumerate() {
         if !node.has_complete_state {
             let state = meet(graph, &node.predecessors, true);
 
@@ -174,7 +165,12 @@ fn meet(
 
             for (predecessor_index, predecessor_node_index) in all_predecessors.iter().enumerate()
             {
-                for (physical_loc, virtual_regs) in graph[*predecessor_node_index].state.iter() {
+                let predecessor_state = match graph.nodes[*predecessor_node_index].state.as_ref() {
+                    Some(predecessor_state) => predecessor_state,
+                    None => continue,
+                };
+
+                for (physical_loc, virtual_regs) in predecessor_state {
                     let mut out_possibly_virtual_reg = Possibility::Unknown;
 
                     for possibly_virtual_reg in virtual_regs.iter() {
@@ -222,7 +218,10 @@ fn meet(
             state
         }
         RegAllocPredecessors::InBlockBody(predecessor_node_index) => {
-            graph[*predecessor_node_index].state.clone()
+            match graph.nodes[*predecessor_node_index].state.as_ref() {
+                Some(predecessor_state) => predecessor_state.clone(),
+                None => HashMap::new(),
+            }
         }
     }
 }
