@@ -53,7 +53,45 @@ pub enum LirType {
     Box = 10,
 }
 
-pub type LirNodeId = u32;
+#[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Hash)]
+#[repr(transparent)]
+pub struct LirNodeId(u32);
+
+impl fmt::Debug for LirNodeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Display for LirNodeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl From<u32> for LirNodeId {
+    fn from(lir_node_id: u32) -> Self {
+        LirNodeId(lir_node_id)
+    }
+}
+
+impl From<&u32> for LirNodeId {
+    fn from(lir_node_id: &u32) -> Self {
+        LirNodeId::from(*lir_node_id)
+    }
+}
+
+impl From<LirNodeId> for u32 {
+    fn from(lir_node_id: LirNodeId) -> Self {
+        lir_node_id.0
+    }
+}
+
+impl From<&LirNodeId> for u32 {
+    fn from(lir_node_id: &LirNodeId) -> Self {
+        u32::from(*lir_node_id)
+    }
+}
 
 #[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Hash, TypedIndex)]
 #[typed_index(LirNode)]
@@ -73,7 +111,7 @@ impl fmt::Display for LirNodeIndex {
 
 impl From<LirNodeId> for LirNodeIndex {
     fn from(lir_node_id: LirNodeId) -> Self {
-        LirNodeIndex(lir_node_id as usize - 1)
+        LirNodeIndex(u32::from(lir_node_id) as usize - 1)
     }
 }
 
