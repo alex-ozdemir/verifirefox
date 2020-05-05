@@ -155,22 +155,22 @@ DefaultJitOptions::DefaultJitOptions() {
 
   // How many invocations or loop iterations are needed before functions
   // enter the Baseline Interpreter.
-  SET_DEFAULT(baselineInterpreterWarmUpThreshold, 0);
+  SET_DEFAULT(baselineInterpreterWarmUpThreshold, 10);
 
   // How many invocations or loop iterations are needed before functions
   // are compiled with the baseline compiler.
   // Duplicated in all.js - ensure both match.
-  SET_DEFAULT(baselineJitWarmUpThreshold, 0);
+  SET_DEFAULT(baselineJitWarmUpThreshold, 100);
 
   // How many invocations or loop iterations are needed before functions
   // are compiled with the Ion compiler at OptimizationLevel::Normal.
   // Duplicated in all.js - ensure both match.
-  SET_DEFAULT(normalIonWarmUpThreshold, 0);
+  SET_DEFAULT(normalIonWarmUpThreshold, 1000);
 
   // How many invocations or loop iterations are needed before functions
   // are compiled with the Ion compiler at OptimizationLevel::Full.
   // Duplicated in all.js - ensure both match.
-  SET_DEFAULT(fullIonWarmUpThreshold, 0);
+  SET_DEFAULT(fullIonWarmUpThreshold, 100'000);
 
   // Number of exception bailouts (resuming into catch/finally block) before
   // we invalidate and forbid Ion compilation.
@@ -303,7 +303,7 @@ void DefaultJitOptions::setEagerIonCompilation() {
 }
 
 void DefaultJitOptions::setNormalIonWarmUpThreshold(uint32_t warmUpThreshold) {
-  normalIonWarmUpThreshold = 0;
+  normalIonWarmUpThreshold = warmUpThreshold;
 
   if (fullIonWarmUpThreshold < normalIonWarmUpThreshold) {
     fullIonWarmUpThreshold = normalIonWarmUpThreshold;
@@ -311,7 +311,7 @@ void DefaultJitOptions::setNormalIonWarmUpThreshold(uint32_t warmUpThreshold) {
 }
 
 void DefaultJitOptions::setFullIonWarmUpThreshold(uint32_t warmUpThreshold) {
-  fullIonWarmUpThreshold = 0;
+  fullIonWarmUpThreshold = warmUpThreshold;
 
   if (normalIonWarmUpThreshold > fullIonWarmUpThreshold) {
     setNormalIonWarmUpThreshold(fullIonWarmUpThreshold);
