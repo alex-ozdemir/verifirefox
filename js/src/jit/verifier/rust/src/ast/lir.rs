@@ -95,7 +95,7 @@ impl From<&LirNodeId> for u32 {
 
 #[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Hash, TypedIndex)]
 #[typed_index(LirNode)]
-pub struct LirNodeIndex(usize);
+pub struct LirNodeIndex(pub usize);
 
 impl fmt::Debug for LirNodeIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
