@@ -15,7 +15,7 @@ use crate::passes::base::Pass;
 
 pub mod lir;
 
-trait Set<T>: 'static + Default + Clone + Eq + Debug + Send + Sync {
+pub trait Set<T>: 'static + Default + Clone + Eq + Debug + Send + Sync {
     fn union_with(self, other: &Self) -> Self;
     fn insersect_with(self, other: &Self) -> Self;
     fn add(self, item: T) -> Self;
@@ -23,7 +23,7 @@ trait Set<T>: 'static + Default + Clone + Eq + Debug + Send + Sync {
     fn contains(&self, item: &T) -> bool;
 }
 
-trait DefUseGraph: 'static + Debug + Send + Sync {
+pub trait DefUseGraph: 'static + Debug + Send + Sync {
     /// Unique for each node
     type Node: Eq + Ord + Hash + Copy + Debug + Send + Sync;
     /// Unique for each def/use-able identifier
@@ -139,17 +139,23 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
 }
 
 #[derive(Clone, Debug)]
-struct UndefUsePass<G: DefUseGraph, Ids: Set<G::Id>> {
+pub struct UndefUsePass<G: DefUseGraph, Ids: Set<G::Id>> {
     graph: Arc<G>,
     _ids: PhantomData<Ids>,
 }
 
-impl<G: DefUseGraph, Ids: Set<G::Id>> From<G> for UndefUsePass<G, Ids> {
-    fn from(g: G) -> Self {
+impl<G: DefUseGraph, Ids: Set<G::Id>> From<Arc<G>> for UndefUsePass<G, Ids> {
+    fn from(graph: Arc<G>) -> Self {
         Self {
-            graph: Arc::new(g),
+            graph,
             _ids: Default::default(),
         }
+    }
+}
+
+impl<G: DefUseGraph, Ids: Set<G::Id>> From<G> for UndefUsePass<G, Ids> {
+    fn from(graph: G) -> Self {
+        Self::from(Arc::new(graph))
     }
 }
 

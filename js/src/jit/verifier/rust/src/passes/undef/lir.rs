@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::ast::lir;
-use crate::passes::undef::{DefUseGraph, Set};
+use crate::passes::undef::{DefUseGraph, UndefUsePass, Set};
 
 impl DefUseGraph for lir::LirGraph {
     type Node = lir::LirNodeIndex;
@@ -55,6 +55,8 @@ impl Set<lir::VirtualReg> for HashIdSet {
     }
 }
 
+pub type LirUndefUsePass = UndefUsePass<lir::LirGraph, HashIdSet>;
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -79,7 +81,7 @@ mod test {
         let lir: LirGraph = vec![
             LirNode::default(); 1
         ].into_boxed_slice();
-        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         assert!(pass.run().is_ok());
     }
 
@@ -92,7 +94,7 @@ mod test {
         link(&mut lir, 1, 2);
         def(&mut lir, 0, 0);
         use_(&mut lir, 2, 0);
-        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_ok());
     }
@@ -107,7 +109,7 @@ mod test {
         def(&mut lir, 0, 0);
         use_(&mut lir, 2, 0);
         use_(&mut lir, 2, 1);
-        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_err());
     }
@@ -124,7 +126,7 @@ mod test {
         def(&mut lir, 1, 0);
         def(&mut lir, 2, 0);
         use_(&mut lir, 3, 0);
-        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_ok());
     }
@@ -141,7 +143,7 @@ mod test {
         def(&mut lir, 1, 1);
         def(&mut lir, 2, 0);
         use_(&mut lir, 3, 0);
-        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_err());
     }
