@@ -105,8 +105,8 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
                 [] => continue,
                 // Avoid the copy if there is only one.
                 [pred] => Cow::Borrowed(&self.get_node(pred)?.post_defs),
-                preds => Cow::Owned(preds.iter().fold(Ok(Ids::default()), |s: Result<Ids, MissingNodeError<G::Node>>, p| {
-                    s.and_then(|s| Ok(s.union_with(&self.get_node(p)?.post_defs)))
+                preds => Cow::Owned(preds.iter().skip(1).fold(Ok(self.get_node(&preds[0])?.post_defs.clone()), |s: Result<Ids, MissingNodeError<G::Node>>, p| {
+                    s.and_then(|s| Ok(s.insersect_with(&self.get_node(p)?.post_defs)))
                 })?),
             };
             if prior_defs.as_ref() != &data.prior_defs {
@@ -142,6 +142,15 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
 struct UndefUsePass<G: DefUseGraph, Ids: Set<G::Id>> {
     graph: Arc<G>,
     _ids: PhantomData<Ids>,
+}
+
+impl<G: DefUseGraph, Ids: Set<G::Id>> From<G> for UndefUsePass<G, Ids> {
+    fn from(g: G) -> Self {
+        Self {
+            graph: Arc::new(g),
+            _ids: Default::default(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Error)]

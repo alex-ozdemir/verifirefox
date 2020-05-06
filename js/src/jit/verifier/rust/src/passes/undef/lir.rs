@@ -54,3 +54,95 @@ impl Set<lir::VirtualReg> for HashIdSet {
         self.0.contains(item)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::ast::lir::*;
+    use crate::passes::undef::*;
+
+    fn link(g: &mut LirGraph, from: u32, to: u32) {
+        g[from as usize].push_successor(LirNodeId::from(to + 1));
+        g[to as usize].push_predecessor(LirNodeId::from(from + 1));
+    }
+
+    fn use_(g: &mut LirGraph, node: u32, reg: u32) {
+        g[node as usize].push_operand(LirAllocation::Dynamic(LirDynamicAllocation::new(LirUseInfo::new(reg, true, LirUsePolicy::Reg))));
+    }
+
+    fn def(g: &mut LirGraph, node: u32, reg: u32) {
+        g[node as usize].push_def(Some(LirDefinition::new(reg, LirType::Int32, LirDefinitionPolicy::Reg)));
+    }
+
+    #[test]
+    fn safe() {
+        let lir: LirGraph = vec![
+            LirNode::default(); 1
+        ].into_boxed_slice();
+        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        assert!(pass.run().is_ok());
+    }
+
+    #[test]
+    fn safe_linear() {
+        let mut lir: LirGraph = vec![
+            LirNode::default(); 3
+        ].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 1, 2);
+        def(&mut lir, 0, 0);
+        use_(&mut lir, 2, 0);
+        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let result = pass.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn unsafe_linear() {
+        let mut lir: LirGraph = vec![
+            LirNode::default(); 3
+        ].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 1, 2);
+        def(&mut lir, 0, 0);
+        use_(&mut lir, 2, 0);
+        use_(&mut lir, 2, 1);
+        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let result = pass.run();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn safe_fork_join() {
+        let mut lir: LirGraph = vec![
+            LirNode::default(); 4
+        ].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 0, 2);
+        link(&mut lir, 1, 3);
+        link(&mut lir, 2, 3);
+        def(&mut lir, 1, 0);
+        def(&mut lir, 2, 0);
+        use_(&mut lir, 3, 0);
+        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let result = pass.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn unsafe_fork_join() {
+        let mut lir: LirGraph = vec![
+            LirNode::default(); 4
+        ].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 0, 2);
+        link(&mut lir, 1, 3);
+        link(&mut lir, 2, 3);
+        def(&mut lir, 1, 1);
+        def(&mut lir, 2, 0);
+        use_(&mut lir, 3, 0);
+        let pass = UndefUsePass::<_, HashIdSet>::from(lir);
+        let result = pass.run();
+        assert!(result.is_err());
+    }
+}
