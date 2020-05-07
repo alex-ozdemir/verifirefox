@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::borrow::Cow;
 
-use anyhow::Error;
+use anyhow::{anyhow,Error};
 use thiserror::Error;
 
 use crate::passes::base::Pass;
@@ -118,7 +118,9 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
                 return Ok(&data.preds);
             }
             data = prev_data;
-            assert_ne!(prev, n, "Perfect cycle");
+            if prev == n {
+                Err(anyhow!("Prefect cycle about {:?}", n))?;
+            }
         }
     }
 
@@ -171,7 +173,11 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
                 // For a phi node, each use must be defined **after** its corresponding block
                 // predecpredecessor node
                 let block_preds = self.block_preds(node)?;
-                assert_eq!(block_preds.len(), data.uses.len(), "For phi nodes, #uses must equal #block predecessors");
+                if block_preds.len() != data.uses.len() {
+                    Err(anyhow!("For phi nodes, #uses must equal #block predecpredecessors\nNode: {:#?}\nGraph: {:#?}\nBlock preds: {:#?}\nuses:{:#?}",
+                        node, self, block_preds, data.uses))?;
+
+                }
                 for (pred, use_) in block_preds.iter().zip(data.uses.iter()) {
                     if self.get_node(pred)?.post_undefs.contains(use_) {
                         Err(UndefUseError::from((*node, *use_)))?;

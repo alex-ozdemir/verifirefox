@@ -133,44 +133,40 @@ mod test {
         )));
     }
 
-    macro_rules! test_for_pass {
-
-        ($pass_ty:ident) => {
-            paste::item! {
     #[test]
-    fn [< $pass_ty:snake _safe >]() {
+    fn safe() {
         let lir: LirGraph = vec![LirNode::default(); 1].into_boxed_slice();
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         assert!(pass.run().is_ok());
     }
 
     #[test]
-    fn [< $pass_ty:snake _safe_linear >]() {
+    fn safe_linear() {
         let mut lir: LirGraph = vec![LirNode::default(); 3].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
         def(&mut lir, 0, 0);
         use_(&mut lir, 2, 0);
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_ok());
     }
 
     #[test]
-    fn [< $pass_ty:snake _unsafe_linear >]() {
+    fn unsafe_linear() {
         let mut lir: LirGraph = vec![LirNode::default(); 3].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
         def(&mut lir, 0, 0);
         use_(&mut lir, 2, 0);
         use_(&mut lir, 2, 1);
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_err());
     }
 
     #[test]
-    fn [< $pass_ty:snake _safe_fork_join >]() {
+    fn safe_fork_join() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
@@ -179,13 +175,13 @@ mod test {
         def(&mut lir, 1, 0);
         def(&mut lir, 2, 0);
         use_(&mut lir, 3, 0);
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_ok());
     }
 
     #[test]
-    fn [< $pass_ty:snake _safe_fork_join_phi >]() {
+    fn safe_fork_join_phi() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
@@ -196,7 +192,7 @@ mod test {
         lir[3].set_operation(LirOperation::Phi);
         use_(&mut lir, 3, 0);
         use_(&mut lir, 3, 1);
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         if result.is_err() {
             eprintln!("{:#?}", result);
@@ -205,7 +201,7 @@ mod test {
     }
 
     #[test]
-    fn [< $pass_ty:snake _safe_fork_join_multi_phi >]() {
+    fn safe_fork_join_multi_phi() {
         let mut lir: LirGraph = vec![LirNode::default(); 7].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
@@ -229,7 +225,7 @@ mod test {
         use_(&mut lir, 5, 1);
         def(&mut lir, 5, 4);
         use_(&mut lir, 6, 4);
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         if result.is_err() {
             eprintln!("{:#?}", result);
@@ -238,7 +234,7 @@ mod test {
     }
 
     #[test]
-    fn [< $pass_ty:snake _unsafe_fork_join >]() {
+    fn unsafe_fork_join() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
@@ -247,13 +243,13 @@ mod test {
         def(&mut lir, 1, 1);
         def(&mut lir, 2, 0);
         use_(&mut lir, 3, 0);
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_err());
     }
 
     #[test]
-    fn [< $pass_ty:snake _safe_loop >]() {
+    fn safe_loop() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
@@ -262,7 +258,7 @@ mod test {
         def(&mut lir, 0, 0);
         use_(&mut lir, 2, 0);
         use_(&mut lir, 3, 0);
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         if result.is_err() {
             eprintln!("{:#?}", result);
@@ -271,7 +267,7 @@ mod test {
     }
 
     #[test]
-    fn [< $pass_ty:snake _unsafe_loop >]() {
+    fn unsafe_loop() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
@@ -280,14 +276,8 @@ mod test {
         def(&mut lir, 2, 0);
         use_(&mut lir, 2, 0);
         use_(&mut lir, 3, 0);
-        let pass = $pass_ty::from(lir);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_err());
     }
-            }
-        }
-    }
-
-    test_for_pass!{LirUndefUsePass}
-    test_for_pass!{LirUndefUsePassHashSet}
 }
