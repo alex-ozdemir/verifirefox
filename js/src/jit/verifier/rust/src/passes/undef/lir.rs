@@ -1,9 +1,11 @@
 use std::collections::HashSet;
+use std::mem::take;
 
 use bit_vec::BitVec;
 
 use crate::ast::lir;
 use crate::passes::undef::{DefUseGraph, Set, UndefUsePass};
+
 
 impl DefUseGraph for lir::LirGraph {
     type Node = lir::LirNodeIndex;
@@ -29,8 +31,8 @@ impl DefUseGraph for lir::LirGraph {
     fn successors(&self, n: Self::Node) -> Vec<Self::Node> {
         self[n].successors().to_owned()
     }
-    fn nodes(&self) -> Vec<Self::Node> {
-        (0..self.len()).map(lir::LirNodeIndex).collect()
+    fn entry(&self) -> Self::Node {
+        lir::LirNodeIndex(0)
     }
     fn ids(&self) -> HashSet<lir::VirtualReg> {
         self.iter().flat_map(|n| n.regs()).collect()
@@ -50,19 +52,20 @@ impl DefUseGraph for lir::LirGraph {
 pub struct HashIdSet(pub HashSet<lir::VirtualReg>);
 
 impl Set<lir::VirtualReg> for HashIdSet {
-    fn union_with(self, other: &Self) -> Self {
-        HashIdSet(self.0.union(&other.0).copied().collect())
+    fn union(&mut self, other: &Self) {
+        self.0 = take(&mut self.0).union(&other.0).copied().collect();
     }
-    fn insersect_with(self, other: &Self) -> Self {
-        HashIdSet(self.0.intersection(&other.0).copied().collect())
+    fn insersect(&mut self, other: &Self) {
+        self.0 = take(&mut self.0).intersection(&other.0).copied().collect();
     }
-    fn add(mut self, item: lir::VirtualReg) -> Self {
+    fn difference(&mut self, other: &Self) {
+        self.0 = take(&mut self.0).difference(&other.0).copied().collect();
+    }
+    fn add(&mut self, item: lir::VirtualReg) {
         self.0.insert(item);
-        self
     }
-    fn remove(mut self, item: &lir::VirtualReg) -> Self {
+    fn remove(&mut self, item: &lir::VirtualReg) {
         self.0.remove(&item);
-        self
     }
     fn contains(&self, item: &lir::VirtualReg) -> bool {
         self.0.contains(item)
@@ -79,21 +82,20 @@ impl Set<lir::VirtualReg> for HashIdSet {
 pub struct BvIdSet(BitVec);
 
 impl Set<lir::VirtualReg> for BvIdSet {
-    fn union_with(mut self, other: &Self) -> Self {
+    fn union(&mut self, other: &Self) {
         self.0.or(&other.0);
-        self
     }
-    fn insersect_with(mut self, other: &Self) -> Self {
+    fn insersect(&mut self, other: &Self) {
         self.0.and(&other.0);
-        self
     }
-    fn add(mut self, item: lir::VirtualReg) -> Self {
-        self.0.set(item as usize, true);
-        self
+    fn difference(&mut self, other: &Self) {
+        self.0.difference(&other.0);
     }
-    fn remove(mut self, item: &lir::VirtualReg) -> Self {
-        self.0.set(*item as usize, false);
-        self
+    fn add(&mut self, item: lir::VirtualReg) {
+        self.0.set(item as usize, true)
+    }
+    fn remove(&mut self, item: &lir::VirtualReg) {
+        self.0.set(*item as usize, false)
     }
     fn contains(&self, item: &lir::VirtualReg) -> bool {
         self.0.get(*item as usize).unwrap_or(false)
@@ -117,6 +119,17 @@ mod test {
     use crate::ast::lir::*;
     use crate::passes::undef::*;
 
+    fn assert_has_error_str(e: &Error, s: &str) {
+        assert!(format!("{}", e).contains(s), "No '{}' in error '{}'", s, e)
+    }
+
+    fn assert_undef_err(result: &Result<(), Error>) {
+        assert!(result.is_err());
+        if let Err(e) = result.as_ref() {
+            assert_has_error_str(e, "Use of undef")
+        }
+    }
+
     fn link(g: &mut LirGraph, from: u32, to: u32) {
         g[from as usize].push_successor(LirNodeId::from(to + 1));
         g[to as usize].push_predecessor(LirNodeId::from(from + 1));
@@ -138,9 +151,14 @@ mod test {
 
     #[test]
     fn safe() {
-        let lir: LirGraph = vec![LirNode::default(); 1].into_boxed_slice();
+        let mut lir: LirGraph = vec![LirNode::default(); 1].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
         let pass = LirUndefUsePass::from(lir);
-        assert!(pass.run().is_ok());
+        let result = pass.run();
+        if result.is_err() {
+            eprintln!("{:#?}", result);
+        }
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -153,6 +171,9 @@ mod test {
         use_(&mut lir, 2, 0);
         let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
+        if result.is_err() {
+            eprintln!("{:#?}", result);
+        }
         assert!(result.is_ok());
     }
 
@@ -167,7 +188,7 @@ mod test {
         use_(&mut lir, 2, 1);
         let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
-        assert!(result.is_err());
+        assert_undef_err(&result);
     }
 
     #[test]
@@ -266,7 +287,7 @@ mod test {
         use_(&mut lir, 3, 0);
         let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
-        assert!(result.is_err());
+        assert_undef_err(&result);
     }
 
     #[test]
@@ -307,6 +328,6 @@ mod test {
         use_(&mut lir, 3, 0);
         let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
-        assert!(result.is_err());
+        assert_undef_err(&result);
     }
 }
