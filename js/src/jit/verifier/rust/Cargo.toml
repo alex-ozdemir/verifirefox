@@ -21,3 +21,6 @@ anyhow = "^1.0.28"
 thiserror = "^1.0.14"
 bit-vec = "0.6.2"
 typed_index_derive = "^0.1.4"
+
+[dev-dependencies]
+paste = "0.1"
