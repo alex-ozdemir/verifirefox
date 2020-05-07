@@ -160,6 +160,10 @@ impl LirNode {
         &self.operation
     }
 
+    pub fn set_operation(&mut self, operation: LirOperation) {
+        self.operation = operation;
+    }
+
     pub fn operands(&self) -> &[LirAllocation] {
         &self.operands
     }

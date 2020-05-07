@@ -31,6 +31,9 @@ pub trait DefUseGraph: 'static + Debug + Send + Sync {
     type Id: Eq + Copy + Debug + Send + Sync;
 
     fn predecessors(&self, n: Self::Node) -> Vec<Self::Node>;
+    /// Whether this node is a join point.
+    /// If true, then the number of predecessors must equal the number of uses.
+    fn is_phi(&self, n: Self::Node) -> bool;
     fn successors(&self, n: Self::Node) -> Vec<Self::Node>;
     fn definitions(&self, n: Self::Node) -> Vec<Self::Id>;
     fn uses(&self, n: Self::Node) -> Vec<Self::Id>;
@@ -49,6 +52,7 @@ struct UndefUseAnalysisNode<Node, Id, Ids: Set<Id>> {
     prior_defs: Ids,
     /// identifiers defined earlier
     post_defs: Ids,
+    is_phi: bool,
     queued: bool,
 }
 
@@ -72,11 +76,18 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
         let mut nodes = HashMap::new();
         let n_ids = graph.n_ids();
         for n in graph.nodes() {
+            let uses = graph.uses(n);
+            let preds = graph.predecessors(n);
+            let is_phi = graph.is_phi(n);
+            if is_phi {
+                assert_eq!(uses.len(), preds.len(), "For phi nodes, #uses must equal #predecessors");
+            }
             let mut data = UndefUseAnalysisNode {
-                preds: graph.predecessors(n),
+                preds,
                 succs: graph.successors(n),
                 defs: graph.definitions(n),
-                uses: graph.uses(n),
+                uses,
+                is_phi,
                 prior_defs: Ids::new(n_ids),
                 post_defs: Ids::new(n_ids),
                 queued: false,
@@ -130,11 +141,22 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
         Ok(())
     }
 
-    fn find_undef_uses(&self) -> Result<(),UndefUseError<G::Node, G::Id>> {
+    fn find_undef_uses(&self) -> Result<(),Error> {
         for (node, data) in &self.nodes {
-            for use_ in &data.uses {
-                if !data.prior_defs.contains(use_) {
-                    return Err(UndefUseError::from((*node, *use_)));
+            if data.is_phi {
+                // For a phi node, each use must be defined **after** its corresponding pred. node
+                assert_eq!(data.preds.len(), data.uses.len());
+                for (pred, use_) in data.preds.iter().zip(data.uses.iter()) {
+                    if !self.get_node(pred)?.post_defs.contains(use_) {
+                        Err(UndefUseError::from((*node, *use_)))?;
+                    }
+                }
+            } else {
+                // For non-phi node, each use must be defined **before** this node
+                for use_ in &data.uses {
+                    if !data.prior_defs.contains(use_) {
+                        Err(UndefUseError::from((*node, *use_)))?;
+                    }
                 }
             }
         }

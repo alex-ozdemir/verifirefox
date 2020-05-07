@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use bit_vec::BitVec;
 
 use crate::ast::lir;
-use crate::passes::undef::{DefUseGraph, UndefUsePass, Set};
+use crate::passes::undef::{DefUseGraph, Set, UndefUsePass};
 
 impl DefUseGraph for lir::LirGraph {
     type Node = lir::LirNodeIndex;
@@ -34,6 +34,12 @@ impl DefUseGraph for lir::LirGraph {
     }
     fn n_ids(&self) -> usize {
         self.iter().map(|n| n.max_reg()).max().unwrap_or(0) as usize + 1
+    }
+    fn is_phi(&self, n: Self::Node) -> bool {
+        match self[n].operation() {
+            &lir::LirOperation::Phi => true,
+            _ => false,
+        }
     }
 }
 
@@ -108,27 +114,29 @@ mod test {
     }
 
     fn use_(g: &mut LirGraph, node: u32, reg: u32) {
-        g[node as usize].push_operand(LirAllocation::Dynamic(LirDynamicAllocation::new(LirUseInfo::new(reg, true, LirUsePolicy::Reg))));
+        g[node as usize].push_operand(LirAllocation::Dynamic(LirDynamicAllocation::new(
+            LirUseInfo::new(reg, true, LirUsePolicy::Reg),
+        )));
     }
 
     fn def(g: &mut LirGraph, node: u32, reg: u32) {
-        g[node as usize].push_def(Some(LirDefinition::new(reg, LirType::Int32, LirDefinitionPolicy::Reg)));
+        g[node as usize].push_def(Some(LirDefinition::new(
+            reg,
+            LirType::Int32,
+            LirDefinitionPolicy::Reg,
+        )));
     }
 
     #[test]
     fn safe() {
-        let lir: LirGraph = vec![
-            LirNode::default(); 1
-        ].into_boxed_slice();
+        let lir: LirGraph = vec![LirNode::default(); 1].into_boxed_slice();
         let pass = LirUndefUsePass::from(lir);
         assert!(pass.run().is_ok());
     }
 
     #[test]
     fn safe_linear() {
-        let mut lir: LirGraph = vec![
-            LirNode::default(); 3
-        ].into_boxed_slice();
+        let mut lir: LirGraph = vec![LirNode::default(); 3].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
         def(&mut lir, 0, 0);
@@ -140,9 +148,7 @@ mod test {
 
     #[test]
     fn unsafe_linear() {
-        let mut lir: LirGraph = vec![
-            LirNode::default(); 3
-        ].into_boxed_slice();
+        let mut lir: LirGraph = vec![LirNode::default(); 3].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
         def(&mut lir, 0, 0);
@@ -155,9 +161,7 @@ mod test {
 
     #[test]
     fn safe_fork_join() {
-        let mut lir: LirGraph = vec![
-            LirNode::default(); 4
-        ].into_boxed_slice();
+        let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
         link(&mut lir, 1, 3);
@@ -171,10 +175,28 @@ mod test {
     }
 
     #[test]
+    fn safe_fork_join_phi() {
+        let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 0, 2);
+        link(&mut lir, 1, 3);
+        link(&mut lir, 2, 3);
+        def(&mut lir, 1, 0);
+        def(&mut lir, 2, 1);
+        lir[3].set_operation(LirOperation::Phi);
+        use_(&mut lir, 3, 0);
+        use_(&mut lir, 3, 1);
+        let pass = LirUndefUsePass::from(lir);
+        let result = pass.run();
+        if result.is_err() {
+            eprintln!("{:#?}", result);
+        }
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn unsafe_fork_join() {
-        let mut lir: LirGraph = vec![
-            LirNode::default(); 4
-        ].into_boxed_slice();
+        let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
         link(&mut lir, 1, 3);
@@ -189,9 +211,7 @@ mod test {
 
     #[test]
     fn unsafe_fork_join_hash_set() {
-        let mut lir: LirGraph = vec![
-            LirNode::default(); 4
-        ].into_boxed_slice();
+        let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
         link(&mut lir, 1, 3);
