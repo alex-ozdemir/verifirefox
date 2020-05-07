@@ -208,6 +208,10 @@ impl LirNode {
         self.is_at_block_start
     }
 
+    pub fn set_is_at_block_start(&mut self, value: bool) {
+        self.is_at_block_start = value;
+    }
+
     pub fn regs(&self) -> HashSet<VirtualReg> {
         self.operands
             .iter()

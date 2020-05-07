@@ -37,6 +37,7 @@ pub trait DefUseGraph: 'static + Debug + Send + Sync {
     /// Whether this node is a join point.
     /// If true, then the number of predecessors must equal the number of uses.
     fn is_phi(&self, n: Self::Node) -> bool;
+    fn is_block_start(&self, n: Self::Node) -> bool;
     fn successors(&self, n: Self::Node) -> Vec<Self::Node>;
     fn definitions(&self, n: Self::Node) -> Vec<Self::Id>;
     fn uses(&self, n: Self::Node) -> Vec<Self::Id>;
@@ -57,6 +58,7 @@ struct UndefUseAnalysisNode<Node, Id, Ids: Set<Id>> {
     prior_undefs: Ids,
     /// identifiers defined earlier
     post_undefs: Ids,
+    is_block_start: bool,
     is_phi: bool,
     queued: bool,
 }
@@ -95,6 +97,7 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
                 uses,
                 is_phi,
                 prior_undefs,
+                is_block_start: graph.is_block_start(n),
                 post_undefs: none.clone(),
                 queued: false,
             };
@@ -107,21 +110,18 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
     /// Given a node, gets the nodes that preceed its basic block
     fn block_preds(&self, n: &G::Node) -> Result<&Vec<G::Node>, Error> {
         let mut data = self.get_node(n)?;
-        loop {
-            if data.preds.len() != 1 {
-                return Ok(&data.preds);
-            }
-            let prev = &data.preds[0];
-            let prev_data = self.get_node(prev)?;
-            assert!(prev_data.succs.len() > 0);
-            if prev_data.succs.len() > 1 {
-                return Ok(&data.preds);
-            }
-            data = prev_data;
-            if prev == n {
-                Err(anyhow!("Prefect cycle about {:?}", n))?;
+        while !data.is_block_start {
+            match data.preds.as_slice() {
+                [] => return Ok(&data.preds),
+                [pred] => {
+                    data = self.get_node(pred)?;
+                }
+                _ => {
+                    Err(anyhow!("Malformed node: {:#?}\nIt has many predecessors, but is not a block start", data))?;
+                }
             }
         }
+        Ok(&data.preds)
     }
 
     fn get_node(&self, n: &G::Node) -> Result<&UndefUseAnalysisNode<G::Node, G::Id, Ids>, MissingNodeError<G::Node>> {

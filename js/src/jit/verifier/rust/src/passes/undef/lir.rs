@@ -41,6 +41,9 @@ impl DefUseGraph for lir::LirGraph {
             _ => false,
         }
     }
+    fn is_block_start(&self, n: Self::Node) -> bool {
+        self[n].is_at_block_start()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -143,6 +146,7 @@ mod test {
     #[test]
     fn safe_linear() {
         let mut lir: LirGraph = vec![LirNode::default(); 3].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
         def(&mut lir, 0, 0);
@@ -155,6 +159,7 @@ mod test {
     #[test]
     fn unsafe_linear() {
         let mut lir: LirGraph = vec![LirNode::default(); 3].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
         def(&mut lir, 0, 0);
@@ -168,6 +173,10 @@ mod test {
     #[test]
     fn safe_fork_join() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
+        lir[1].set_is_at_block_start(true);
+        lir[2].set_is_at_block_start(true);
+        lir[3].set_is_at_block_start(true);
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
         link(&mut lir, 1, 3);
@@ -183,6 +192,10 @@ mod test {
     #[test]
     fn safe_fork_join_phi() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
+        lir[1].set_is_at_block_start(true);
+        lir[2].set_is_at_block_start(true);
+        lir[3].set_is_at_block_start(true);
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
         link(&mut lir, 1, 3);
@@ -203,6 +216,10 @@ mod test {
     #[test]
     fn safe_fork_join_multi_phi() {
         let mut lir: LirGraph = vec![LirNode::default(); 7].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
+        lir[1].set_is_at_block_start(true);
+        lir[2].set_is_at_block_start(true);
+        lir[3].set_is_at_block_start(true);
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
         link(&mut lir, 1, 3);
@@ -236,6 +253,10 @@ mod test {
     #[test]
     fn unsafe_fork_join() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
+        lir[1].set_is_at_block_start(true);
+        lir[2].set_is_at_block_start(true);
+        lir[3].set_is_at_block_start(true);
         link(&mut lir, 0, 1);
         link(&mut lir, 0, 2);
         link(&mut lir, 1, 3);
@@ -251,6 +272,10 @@ mod test {
     #[test]
     fn safe_loop() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
+        lir[1].set_is_at_block_start(true);
+        lir[2].set_is_at_block_start(true);
+        lir[3].set_is_at_block_start(true);
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
         link(&mut lir, 1, 3);
@@ -269,6 +294,10 @@ mod test {
     #[test]
     fn unsafe_loop() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
+        lir[0].set_is_at_block_start(true);
+        lir[1].set_is_at_block_start(true);
+        lir[2].set_is_at_block_start(true);
+        lir[3].set_is_at_block_start(true);
         link(&mut lir, 0, 1);
         link(&mut lir, 1, 2);
         link(&mut lir, 1, 3);
