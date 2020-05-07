@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use bit_vec::BitVec;
+
 use crate::ast::lir;
 use crate::passes::undef::{DefUseGraph, UndefUsePass, Set};
 
@@ -30,9 +32,12 @@ impl DefUseGraph for lir::LirGraph {
     fn nodes(&self) -> Vec<Self::Node> {
         (0..self.len()).map(lir::LirNodeIndex).collect()
     }
+    fn n_ids(&self) -> usize {
+        self.iter().map(|n| n.max_reg()).max().unwrap_or(0) as usize + 1
+    }
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct HashIdSet(pub HashSet<lir::VirtualReg>);
 
 impl Set<lir::VirtualReg> for HashIdSet {
@@ -53,9 +58,43 @@ impl Set<lir::VirtualReg> for HashIdSet {
     fn contains(&self, item: &lir::VirtualReg) -> bool {
         self.0.contains(item)
     }
+    fn new(capacity: usize) -> Self {
+        HashIdSet(HashSet::with_capacity(capacity))
+    }
 }
 
-pub type LirUndefUsePass = UndefUsePass<lir::LirGraph, HashIdSet>;
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct BvIdSet(BitVec);
+
+impl Set<lir::VirtualReg> for BvIdSet {
+    fn union_with(mut self, other: &Self) -> Self {
+        self.0.or(&other.0);
+        self
+    }
+    fn insersect_with(mut self, other: &Self) -> Self {
+        self.0.and(&other.0);
+        self
+    }
+    fn add(mut self, item: lir::VirtualReg) -> Self {
+        self.0.set(item as usize, true);
+        self
+    }
+    fn remove(mut self, item: &lir::VirtualReg) -> Self {
+        self.0.set(*item as usize, false);
+        self
+    }
+    fn contains(&self, item: &lir::VirtualReg) -> bool {
+        self.0.get(*item as usize).unwrap_or(false)
+    }
+    fn new(capacity: usize) -> Self {
+        BvIdSet(BitVec::from_elem(capacity, false))
+    }
+}
+
+#[allow(dead_code)]
+pub type LirUndefUsePassHashSet = UndefUsePass<lir::LirGraph, HashIdSet>;
+
+pub type LirUndefUsePass = UndefUsePass<lir::LirGraph, BvIdSet>;
 
 #[cfg(test)]
 mod test {
@@ -144,6 +183,23 @@ mod test {
         def(&mut lir, 2, 0);
         use_(&mut lir, 3, 0);
         let pass = LirUndefUsePass::from(lir);
+        let result = pass.run();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn unsafe_fork_join_hash_set() {
+        let mut lir: LirGraph = vec![
+            LirNode::default(); 4
+        ].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 0, 2);
+        link(&mut lir, 1, 3);
+        link(&mut lir, 2, 3);
+        def(&mut lir, 1, 1);
+        def(&mut lir, 2, 0);
+        use_(&mut lir, 3, 0);
+        let pass = LirUndefUsePassHashSet::from(lir);
         let result = pass.run();
         assert!(result.is_err());
     }

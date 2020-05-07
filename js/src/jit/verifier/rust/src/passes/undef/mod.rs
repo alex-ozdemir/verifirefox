@@ -15,12 +15,13 @@ use crate::passes::base::Pass;
 
 pub mod lir;
 
-pub trait Set<T>: 'static + Default + Clone + Eq + Debug + Send + Sync {
+pub trait Set<T>: 'static + Clone + Eq + Debug + Send + Sync {
     fn union_with(self, other: &Self) -> Self;
     fn insersect_with(self, other: &Self) -> Self;
     fn add(self, item: T) -> Self;
     fn remove(self, item: &T) -> Self;
     fn contains(&self, item: &T) -> bool;
+    fn new(capacity: usize) -> Self;
 }
 
 pub trait DefUseGraph: 'static + Debug + Send + Sync {
@@ -34,6 +35,7 @@ pub trait DefUseGraph: 'static + Debug + Send + Sync {
     fn definitions(&self, n: Self::Node) -> Vec<Self::Id>;
     fn uses(&self, n: Self::Node) -> Vec<Self::Id>;
     fn nodes(&self) -> Vec<Self::Node>;
+    fn n_ids(&self) -> usize;
 }
 
 #[derive(Clone, Debug)]
@@ -62,25 +64,27 @@ impl<Node, Id: Copy, Ids: Set<Id>> UndefUseAnalysisNode<Node, Id, Ids> {
 #[derive(Clone, Debug)]
 struct UndefUseAnalysisState<G: DefUseGraph, Ids: Set<G::Id>> {
     nodes: HashMap<G::Node, UndefUseAnalysisNode<G::Node, G::Id, Ids>>,
+    n_ids: usize,
 }
 
 impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
     fn from_graph(graph: &G) -> Self {
         let mut nodes = HashMap::new();
+        let n_ids = graph.n_ids();
         for n in graph.nodes() {
             let mut data = UndefUseAnalysisNode {
                 preds: graph.predecessors(n),
                 succs: graph.successors(n),
                 defs: graph.definitions(n),
                 uses: graph.uses(n),
-                prior_defs: Ids::default(),
-                post_defs: Ids::default(),
+                prior_defs: Ids::new(n_ids),
+                post_defs: Ids::new(n_ids),
                 queued: false,
             };
             data.apply_transition();
             nodes.insert(n, data);
         }
-        UndefUseAnalysisState { nodes }
+        UndefUseAnalysisState { n_ids, nodes }
     }
 
     fn get_node(&self, n: &G::Node) -> Result<&UndefUseAnalysisNode<G::Node, G::Id, Ids>, MissingNodeError<G::Node>> {

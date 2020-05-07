@@ -1,4 +1,5 @@
 use std::fmt;
+use std::cmp::max;
 
 use typed_index_derive::TypedIndex;
 
@@ -201,6 +202,13 @@ impl LirNode {
 
     pub fn is_at_block_start(&self) -> bool {
         self.is_at_block_start
+    }
+
+    pub fn max_reg(&self) -> u32 {
+        max(
+            self.operands.iter().filter_map(|o| o.use_info().map(|i| i.virtual_reg)).max().unwrap_or(0),
+            self.defs.iter().filter_map(|od| od.as_ref().map(|d| d.virtual_reg)).max().unwrap_or(0)
+        )
     }
 }
 
