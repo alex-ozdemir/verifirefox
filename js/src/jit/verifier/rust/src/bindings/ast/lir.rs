@@ -180,6 +180,18 @@ pub unsafe extern "C" fn verifirefox_ast_lir_node_push_successor(
 // LirOperation bindings
 
 #[no_mangle]
+pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_call_set_element() -> *mut c_void {
+    let operation = LirOperation::CallSetElement;
+    Box::into_raw(Box::new(operation)) as *mut _
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_load_element_v() -> *mut c_void {
+    let operation = LirOperation::LoadElementV;
+    Box::into_raw(Box::new(operation)) as *mut _
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_move_group(
     move_group_ptr: *mut c_void,
 ) -> *mut c_void {
@@ -191,6 +203,12 @@ pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_move_group(
 #[no_mangle]
 pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_phi() -> *mut c_void {
     let operation = LirOperation::Phi;
+    Box::into_raw(Box::new(operation)) as *mut _
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_spectre_mask_index() -> *mut c_void {
+    let operation = LirOperation::SpectreMaskIndex;
     Box::into_raw(Box::new(operation)) as *mut _
 }
 

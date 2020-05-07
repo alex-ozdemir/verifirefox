@@ -219,6 +219,14 @@ verifier::LirNode* MarshallLirNode(const LNode& node,
   verifier::LirOperation* outOperation;
 
   switch (node.op()) {
+    case LNode::Opcode::CallSetElement: {
+      outOperation = verifirefox_ast_lir_operation_new_call_set_element();
+      break;
+    }
+    case LNode::Opcode::LoadElementV: {
+      outOperation = verifirefox_ast_lir_operation_new_load_element_v();
+      break;
+    }
     case LNode::Opcode::MoveGroup: {
       const LMoveGroup& moveGroup = *node.toMoveGroup();
       verifier::LirMoveGroup* const outMoveGroup =
@@ -228,6 +236,10 @@ verifier::LirNode* MarshallLirNode(const LNode& node,
     }
     case LNode::Opcode::Phi: {
       outOperation = verifirefox_ast_lir_operation_new_phi();
+      break;
+    }
+    case LNode::Opcode::SpectreMaskIndex: {
+      outOperation = verifirefox_ast_lir_operation_new_spectre_mask_index();
       break;
     }
     default: {

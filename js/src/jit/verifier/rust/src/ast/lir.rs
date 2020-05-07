@@ -206,8 +206,11 @@ impl LirNode {
 
 #[derive(Clone, Debug)]
 pub enum LirOperation {
+    CallSetElement,
+    LoadElementV,
     MoveGroup(LirMoveGroup),
     Phi,
+    SpectreMaskIndex,
     Other,
 }
 
