@@ -1599,6 +1599,7 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
 
 #ifdef JS_VERIFIER
   verifier::LIRGraph beforeGraph = verifier::MarshallLirGraph(*lir);
+  verifier::RunLirUndefUsePassSync(verifier::LIRGraph(beforeGraph));
 #endif
 
   {
