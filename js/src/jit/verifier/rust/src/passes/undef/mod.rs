@@ -1,4 +1,6 @@
-use std::collections::{HashMap, VecDeque};
+// TODO(aozdemir): Extract basic blocks and find fixpoint over them, not nodes (Optimization)
+
+use std::collections::{HashMap, VecDeque, HashSet};
 use std::convert::From;
 use std::default::Default;
 use std::fmt::Debug;
@@ -21,7 +23,8 @@ pub trait Set<T>: 'static + Clone + Eq + Debug + Send + Sync {
     fn add(self, item: T) -> Self;
     fn remove(self, item: &T) -> Self;
     fn contains(&self, item: &T) -> bool;
-    fn new(capacity: usize) -> Self;
+    fn all(items: &HashSet<T>) -> Self;
+    fn none(items: &HashSet<T>) -> Self;
 }
 
 pub trait DefUseGraph: 'static + Debug + Send + Sync {
@@ -37,8 +40,10 @@ pub trait DefUseGraph: 'static + Debug + Send + Sync {
     fn successors(&self, n: Self::Node) -> Vec<Self::Node>;
     fn definitions(&self, n: Self::Node) -> Vec<Self::Id>;
     fn uses(&self, n: Self::Node) -> Vec<Self::Id>;
+    /// All nodes. The first one must be the entry point
     fn nodes(&self) -> Vec<Self::Node>;
-    fn n_ids(&self) -> usize;
+    /// All ids.
+    fn ids(&self) -> HashSet<Self::Id>;
 }
 
 #[derive(Clone, Debug)]
@@ -49,53 +54,72 @@ struct UndefUseAnalysisNode<Node, Id, Ids: Set<Id>> {
     defs: Vec<Id>,
     uses: Vec<Id>,
     /// identifiers defined earlier
-    prior_defs: Ids,
+    prior_undefs: Ids,
     /// identifiers defined earlier
-    post_defs: Ids,
+    post_undefs: Ids,
     is_phi: bool,
     queued: bool,
 }
 
 impl<Node, Id: Copy, Ids: Set<Id>> UndefUseAnalysisNode<Node, Id, Ids> {
     fn apply_transition(&mut self) {
-        self.post_defs = self
+        self.post_undefs = self
             .defs
             .iter()
-            .fold(self.prior_defs.clone(), |s: Ids, d| s.add(*d));
+            .fold(self.prior_undefs.clone(), |s: Ids, d| s.remove(d));
     }
 }
 
 #[derive(Clone, Debug)]
 struct UndefUseAnalysisState<G: DefUseGraph, Ids: Set<G::Id>> {
     nodes: HashMap<G::Node, UndefUseAnalysisNode<G::Node, G::Id, Ids>>,
-    n_ids: usize,
 }
 
 impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
     fn from_graph(graph: &G) -> Self {
         let mut nodes = HashMap::new();
-        let n_ids = graph.n_ids();
+        let ids = graph.ids();
+        let all = Ids::all(&ids);
+        let none = Ids::none(&ids);
+        let mut first = true;
         for n in graph.nodes() {
             let uses = graph.uses(n);
             let preds = graph.predecessors(n);
             let is_phi = graph.is_phi(n);
-            if is_phi {
-                assert_eq!(uses.len(), preds.len(), "For phi nodes, #uses must equal #predecessors");
-            }
+            let prior_undefs = if first { all.clone() } else { none.clone() };
+            first = false;
             let mut data = UndefUseAnalysisNode {
                 preds,
                 succs: graph.successors(n),
                 defs: graph.definitions(n),
                 uses,
                 is_phi,
-                prior_defs: Ids::new(n_ids),
-                post_defs: Ids::new(n_ids),
+                prior_undefs,
+                post_undefs: none.clone(),
                 queued: false,
             };
             data.apply_transition();
             nodes.insert(n, data);
         }
-        UndefUseAnalysisState { n_ids, nodes }
+        UndefUseAnalysisState { nodes }
+    }
+
+    /// Given a node, gets the nodes that preceed its basic block
+    fn block_preds(&self, n: &G::Node) -> Result<&Vec<G::Node>, Error> {
+        let mut data = self.get_node(n)?;
+        loop {
+            if data.preds.len() != 1 {
+                return Ok(&data.preds);
+            }
+            let prev = &data.preds[0];
+            let prev_data = self.get_node(prev)?;
+            assert!(prev_data.succs.len() > 0);
+            if prev_data.succs.len() > 1 {
+                return Ok(&data.preds);
+            }
+            data = prev_data;
+            assert_ne!(prev, n, "Perfect cycle");
+        }
     }
 
     fn get_node(&self, n: &G::Node) -> Result<&UndefUseAnalysisNode<G::Node, G::Id, Ids>, MissingNodeError<G::Node>> {
@@ -119,15 +143,15 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
             let prior_defs: Cow<Ids> = match data.preds.as_slice() {
                 [] => continue,
                 // Avoid the copy if there is only one.
-                [pred] => Cow::Borrowed(&self.get_node(pred)?.post_defs),
-                preds => Cow::Owned(preds.iter().skip(1).fold(Ok(self.get_node(&preds[0])?.post_defs.clone()), |s: Result<Ids, MissingNodeError<G::Node>>, p| {
-                    s.and_then(|s| Ok(s.insersect_with(&self.get_node(p)?.post_defs)))
+                [pred] => Cow::Borrowed(&self.get_node(pred)?.post_undefs),
+                preds => Cow::Owned(preds.iter().skip(1).fold(Ok(self.get_node(&preds[0])?.post_undefs.clone()), |s: Result<Ids, MissingNodeError<G::Node>>, p| {
+                    s.and_then(|s| Ok(s.union_with(&self.get_node(p)?.post_undefs)))
                 })?),
             };
-            if prior_defs.as_ref() != &data.prior_defs {
+            if prior_defs.as_ref() != &data.prior_undefs {
                 let new_prior_defs = prior_defs.into_owned();
                 let data_mut = self.get_node_mut(&n)?;
-                data_mut.prior_defs = new_prior_defs;
+                data_mut.prior_undefs = new_prior_defs;
                 data_mut.apply_transition();
                 for succ in data_mut.succs.clone() {
                     let succ_data = self.get_node_mut(&succ)?;
@@ -144,17 +168,19 @@ impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
     fn find_undef_uses(&self) -> Result<(),Error> {
         for (node, data) in &self.nodes {
             if data.is_phi {
-                // For a phi node, each use must be defined **after** its corresponding pred. node
-                assert_eq!(data.preds.len(), data.uses.len());
-                for (pred, use_) in data.preds.iter().zip(data.uses.iter()) {
-                    if !self.get_node(pred)?.post_defs.contains(use_) {
+                // For a phi node, each use must be defined **after** its corresponding block
+                // predecpredecessor node
+                let block_preds = self.block_preds(node)?;
+                assert_eq!(block_preds.len(), data.uses.len(), "For phi nodes, #uses must equal #block predecessors");
+                for (pred, use_) in block_preds.iter().zip(data.uses.iter()) {
+                    if self.get_node(pred)?.post_undefs.contains(use_) {
                         Err(UndefUseError::from((*node, *use_)))?;
                     }
                 }
             } else {
                 // For non-phi node, each use must be defined **before** this node
                 for use_ in &data.uses {
-                    if !data.prior_defs.contains(use_) {
+                    if data.prior_undefs.contains(use_) {
                         Err(UndefUseError::from((*node, *use_)))?;
                     }
                 }

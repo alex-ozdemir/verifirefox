@@ -1,5 +1,5 @@
 use std::fmt;
-use std::cmp::max;
+use std::collections::HashSet;
 
 use typed_index_derive::TypedIndex;
 
@@ -208,11 +208,15 @@ impl LirNode {
         self.is_at_block_start
     }
 
-    pub fn max_reg(&self) -> u32 {
-        max(
-            self.operands.iter().filter_map(|o| o.use_info().map(|i| i.virtual_reg)).max().unwrap_or(0),
-            self.defs.iter().filter_map(|od| od.as_ref().map(|d| d.virtual_reg)).max().unwrap_or(0)
-        )
+    pub fn regs(&self) -> HashSet<VirtualReg> {
+        self.operands
+            .iter()
+            .filter_map(|o| o.use_info().map(|i| i.virtual_reg))
+            .chain(
+                self.defs
+                    .iter()
+                    .filter_map(|od| od.as_ref().map(|d| d.virtual_reg)))
+            .collect()
     }
 }
 

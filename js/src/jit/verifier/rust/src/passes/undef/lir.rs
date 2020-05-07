@@ -32,8 +32,8 @@ impl DefUseGraph for lir::LirGraph {
     fn nodes(&self) -> Vec<Self::Node> {
         (0..self.len()).map(lir::LirNodeIndex).collect()
     }
-    fn n_ids(&self) -> usize {
-        self.iter().map(|n| n.max_reg()).max().unwrap_or(0) as usize + 1
+    fn ids(&self) -> HashSet<lir::VirtualReg> {
+        self.iter().flat_map(|n| n.regs()).collect()
     }
     fn is_phi(&self, n: Self::Node) -> bool {
         match self[n].operation() {
@@ -64,8 +64,11 @@ impl Set<lir::VirtualReg> for HashIdSet {
     fn contains(&self, item: &lir::VirtualReg) -> bool {
         self.0.contains(item)
     }
-    fn new(capacity: usize) -> Self {
-        HashIdSet(HashSet::with_capacity(capacity))
+    fn all(items: &HashSet<lir::VirtualReg>) -> Self {
+        HashIdSet(items.clone())
+    }
+    fn none(items: &HashSet<lir::VirtualReg>) -> Self {
+        HashIdSet(HashSet::with_capacity(items.len()))
     }
 }
 
@@ -92,8 +95,11 @@ impl Set<lir::VirtualReg> for BvIdSet {
     fn contains(&self, item: &lir::VirtualReg) -> bool {
         self.0.get(*item as usize).unwrap_or(false)
     }
-    fn new(capacity: usize) -> Self {
-        BvIdSet(BitVec::from_elem(capacity, false))
+    fn all(items: &HashSet<lir::VirtualReg>) -> Self {
+        BvIdSet(BitVec::from_elem(*items.iter().max().unwrap_or(&0) as usize + 1, true))
+    }
+    fn none(items: &HashSet<lir::VirtualReg>) -> Self {
+        BvIdSet(BitVec::from_elem(*items.iter().max().unwrap_or(&0) as usize + 1, false))
     }
 }
 
@@ -195,6 +201,39 @@ mod test {
     }
 
     #[test]
+    fn safe_fork_join_multi_phi() {
+        let mut lir: LirGraph = vec![LirNode::default(); 7].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 0, 2);
+        link(&mut lir, 1, 3);
+        link(&mut lir, 2, 3);
+        link(&mut lir, 3, 4);
+        link(&mut lir, 4, 5);
+        link(&mut lir, 5, 6);
+        def(&mut lir, 1, 0);
+        def(&mut lir, 2, 1);
+        lir[3].set_operation(LirOperation::Phi);
+        use_(&mut lir, 3, 0);
+        use_(&mut lir, 3, 1);
+        def(&mut lir, 3, 2);
+        lir[4].set_operation(LirOperation::Phi);
+        use_(&mut lir, 4, 0);
+        use_(&mut lir, 4, 1);
+        def(&mut lir, 4, 3);
+        lir[5].set_operation(LirOperation::Phi);
+        use_(&mut lir, 5, 0);
+        use_(&mut lir, 5, 1);
+        def(&mut lir, 5, 4);
+        use_(&mut lir, 6, 4);
+        let pass = LirUndefUsePass::from(lir);
+        let result = pass.run();
+        if result.is_err() {
+            eprintln!("{:#?}", result);
+        }
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn unsafe_fork_join() {
         let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
         link(&mut lir, 0, 1);
@@ -220,6 +259,39 @@ mod test {
         def(&mut lir, 2, 0);
         use_(&mut lir, 3, 0);
         let pass = LirUndefUsePassHashSet::from(lir);
+        let result = pass.run();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn safe_loop() {
+        let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 1, 2);
+        link(&mut lir, 1, 3);
+        link(&mut lir, 2, 1);
+        def(&mut lir, 0, 0);
+        use_(&mut lir, 2, 0);
+        use_(&mut lir, 3, 0);
+        let pass = LirUndefUsePass::from(lir);
+        let result = pass.run();
+        if result.is_err() {
+            eprintln!("{:#?}", result);
+        }
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn unsafe_loop() {
+        let mut lir: LirGraph = vec![LirNode::default(); 4].into_boxed_slice();
+        link(&mut lir, 0, 1);
+        link(&mut lir, 1, 2);
+        link(&mut lir, 1, 3);
+        link(&mut lir, 2, 1);
+        def(&mut lir, 2, 0);
+        use_(&mut lir, 2, 0);
+        use_(&mut lir, 3, 0);
+        let pass = LirUndefUsePass::from(lir);
         let result = pass.run();
         assert!(result.is_err());
     }
