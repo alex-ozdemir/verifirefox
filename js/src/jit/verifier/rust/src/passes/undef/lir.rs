@@ -31,8 +31,8 @@ impl DefUseGraph for lir::LirGraph {
     fn successors(&self, n: Self::Node) -> Vec<Self::Node> {
         self[n].successors().to_owned()
     }
-    fn entry(&self) -> Self::Node {
-        lir::LirNodeIndex(0)
+    fn nodes(&self) -> Vec<Self::Node> {
+        (0..self.len()).map(lir::LirNodeIndex).collect()
     }
     fn ids(&self) -> HashSet<lir::VirtualReg> {
         self.iter().flat_map(|n| n.regs()).collect()

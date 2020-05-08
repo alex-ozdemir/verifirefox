@@ -46,8 +46,8 @@ pub trait DefUseGraph: 'static + Debug + Send + Sync {
     fn successors(&self, n: Self::Node) -> Vec<Self::Node>;
     fn definitions(&self, n: Self::Node) -> Vec<Self::Id>;
     fn uses(&self, n: Self::Node) -> Vec<Self::Id>;
-    /// The entry node
-    fn entry(&self) -> Self::Node;
+    /// All nodes. First is entry.
+    fn nodes(&self) -> Vec<Self::Node>;
     /// All ids.
     fn ids(&self) -> HashSet<Self::Id>;
 }
@@ -93,9 +93,8 @@ struct UndefUseAnalysisState<G: DefUseGraph, Ids: Set<G::Id>> {
 
 impl<G: DefUseGraph, Ids: Set<G::Id>> UndefUseAnalysisState<G, Ids> {
     fn from_graph(graph: &G) -> Result<Self, Error> {
-        let mut queue = VecDeque::from(vec![graph.entry()]);
-        let mut queued = HashSet::new();
-        queued.insert(queue[0]);
+        let mut queue = VecDeque::from_iter(graph.nodes().into_iter().filter(|n| graph.is_block_start(*n)));
+        let mut queued: HashSet<G::Node> = HashSet::from_iter(queue.iter().cloned());
         let mut blocks = Vec::new();
         let mut node_to_block_id = HashMap::new();
         let ids = graph.ids();
