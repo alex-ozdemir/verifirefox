@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashSet;
 
 use typed_index_derive::TypedIndex;
 
@@ -95,7 +96,7 @@ impl From<&LirNodeId> for u32 {
 
 #[derive(Clone, Copy, Default, Eq, Ord, PartialEq, PartialOrd, Hash, TypedIndex)]
 #[typed_index(LirNode)]
-pub struct LirNodeIndex(usize);
+pub struct LirNodeIndex(pub usize);
 
 impl fmt::Debug for LirNodeIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -159,6 +160,10 @@ impl LirNode {
         &self.operation
     }
 
+    pub fn set_operation(&mut self, operation: LirOperation) {
+        self.operation = operation;
+    }
+
     pub fn operands(&self) -> &[LirAllocation] {
         &self.operands
     }
@@ -201,6 +206,21 @@ impl LirNode {
 
     pub fn is_at_block_start(&self) -> bool {
         self.is_at_block_start
+    }
+
+    pub fn set_is_at_block_start(&mut self, value: bool) {
+        self.is_at_block_start = value;
+    }
+
+    pub fn regs(&self) -> HashSet<VirtualReg> {
+        self.operands
+            .iter()
+            .filter_map(|o| o.use_info().map(|i| i.virtual_reg))
+            .chain(
+                self.defs
+                    .iter()
+                    .filter_map(|od| od.as_ref().map(|d| d.virtual_reg)))
+            .collect()
     }
 }
 
