@@ -16,6 +16,9 @@ if CONFIG['CC_TYPE'] in ('clang', 'gcc'):
     # Ignore shadowed variable warnings as there are too many.
     CXXFLAGS += ['-Wno-shadow']
 
+# Hack to avoid undefined shm_open
+LDFLAGS += ['-lrt']
+
 # gcc is buggy and warns on our attempts to JS_PUBLIC_API our
 # forward-declarations or explicit template instantiations. See
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=50044
