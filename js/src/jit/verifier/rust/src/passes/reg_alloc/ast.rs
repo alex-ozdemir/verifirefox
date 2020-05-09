@@ -87,9 +87,12 @@ impl RegAllocMapping {
             Some(after_physical_loc) => after_physical_loc,
             None => {
                 return match (before_allocation, after_allocation) {
-                    (LirAllocation::Bogus, LirAllocation::Bogus) |
-                    (LirAllocation::Constant, LirAllocation::Constant) => Ok(None),
-                    _ => Err(anyhow!("Allocation is missing a required physical location after register allocation")),
+                    (LirAllocation::Bogus, LirAllocation::Bogus)
+                    | (LirAllocation::Constant, LirAllocation::Constant) => Ok(None),
+                    _ => Err(anyhow!(
+                        "Allocation is missing a required physical location after register \
+                            allocation"
+                    )),
                 };
             }
         };
@@ -104,7 +107,11 @@ impl RegAllocMapping {
         );
 
         if let Some(before_physical_loc) = before_allocation.physical_loc() {
-            ensure!(before_physical_loc == after_physical_loc, "Allocation with a physical location before register allocation does not match after");
+            ensure!(
+                before_physical_loc == after_physical_loc,
+                "Allocation with a physical location before register allocation does not match \
+                    after"
+            );
         }
 
         let is_consistent_with_before_use_policy = match before_use_info.policy() {
@@ -142,7 +149,13 @@ impl RegAllocMapping {
                 ),
             };
 
-        ensure!(before_definition.virtual_reg() == after_definition.virtual_reg(), "Definition has different virtual registers before and after register allocation: {} vs {}", before_definition.virtual_reg(), after_definition.virtual_reg());
+        ensure!(
+            before_definition.virtual_reg() == after_definition.virtual_reg(),
+            "Definition has different virtual registers before and after register allocation: \
+                {} vs {}",
+            before_definition.virtual_reg(),
+            after_definition.virtual_reg()
+        );
 
         ensure!(
             before_definition.ty() == after_definition.ty(),
@@ -497,10 +510,20 @@ fn check_before_after_node_consistency(
     );
 
     // Temporarily disabled - this can legitimately occur due to the insertion of MoveGroups.
-    // ensure!(before_node.predecessors() == after_node.predecessors(), "Node has different predecessors before and after register allocation.");
+    /*
+    ensure!(
+        before_node.predecessors() == after_node.predecessors(),
+        "Node has different predecessors before and after register allocation."
+    );
+    */
 
     // Temporarily disabled - this can legitimately occur due to the insertion of MoveGroups.
-    // ensure!(before_node.successors() == after_node.successors(), "Node has different successors before and after register allocation");
+    /*
+    ensure!(
+        before_node.successors() == after_node.successors(),
+        "Node has different successors before and after register allocation"
+    );
+    */
 
     Ok(())
 }
@@ -579,7 +602,11 @@ impl RegAllocPhi {
             let input_mapping = RegAllocMapping::from_lir_allocations(before_input, after_input)?
                 .ok_or_else(|| anyhow!("Phi inout is not backed by storage"))?;
 
-            ensure!(input_mapping.physical_loc == output_physical_loc, "Phi input allocation does not correspond to the output allocation's physical location");
+            ensure!(
+                input_mapping.physical_loc == output_physical_loc,
+                "Phi input allocation does not correspond to the output allocation's physical \
+                    location"
+            );
 
             Ok(input_mapping.virtual_reg)
         }
