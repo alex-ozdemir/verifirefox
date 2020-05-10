@@ -338,7 +338,10 @@ impl RegAllocOperation {
                 let out_phi = RegAllocPhi::from_lir(before_node, after_node)?;
                 Ok(RegAllocOperation::Phi(out_phi))
             }
-            LirOperation::Other => {
+            LirOperation::CallSetElement
+            | LirOperation::LoadElementV
+            | LirOperation::SpectreMaskIndex
+            | LirOperation::Other => {
                 let before_node = maybe_before_node.ok_or_else(|| {
                     anyhow!("Found Other node not present before register allocation")
                 })?;

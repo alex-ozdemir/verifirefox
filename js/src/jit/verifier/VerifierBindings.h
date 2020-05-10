@@ -124,10 +124,19 @@ void verifirefox_ast_lir_node_push_successor(
 
 // LirOperation bindings
 
+js::jit::verifier::LirOperation*
+verifirefox_ast_lir_operation_new_call_set_element();
+
+js::jit::verifier::LirOperation*
+verifirefox_ast_lir_operation_new_load_element_v();
+
 js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_move_group(
     js::jit::verifier::LirMoveGroup* moveGroup);
 
 js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_phi();
+
+js::jit::verifier::LirOperation*
+verifirefox_ast_lir_operation_new_spectre_mask_index();
 
 // LirMoveGroup bindings
 

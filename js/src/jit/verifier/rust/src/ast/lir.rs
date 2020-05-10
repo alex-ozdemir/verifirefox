@@ -224,10 +224,50 @@ impl LirNode {
     }
 }
 
+macro_rules! operations {
+    [ $($op:ident($($arg:ident),+)),* ] => {
+        use ref_cast::RefCast;
+        $(
+            #[derive(RefCast)]
+            #[repr(transparent)]
+            pub struct $op(LirNode);
+            
+            #[allow(dead_code)]
+            impl $op {
+                pub fn from_node(node: &LirNode) -> Option<&Self> {
+                    match node.operation() {
+                        LirOperation::$op => Some($op::ref_cast(node)),
+                        _ => None,
+                    }
+                }
+                operation_field_impl!(0, $($arg),+);
+            }
+        )*
+    };
+}
+
+macro_rules! operation_field_impl {
+    ($index:expr, $field:ident) => {
+        pub fn $field(&self) -> &LirAllocation {
+            &self.0.operands()[$index]
+        }
+    };
+
+    ($index:expr, $field:ident, $($rest:ident),+) => {
+        operation_field_impl!($index, $field);
+
+        operation_field_impl!($index + 1, $($rest),+);
+    };
+
+}
+
 #[derive(Clone, Debug)]
 pub enum LirOperation {
+    CallSetElement,
+    LoadElementV,
     MoveGroup(LirMoveGroup),
     Phi,
+    SpectreMaskIndex,
     Other,
 }
 
@@ -236,6 +276,12 @@ impl Default for LirOperation {
         LirOperation::Other
     }
 }
+
+operations![
+    LoadElementV(array,index)
+    Phi,
+    SpectreMaskIndex(index,length),
+];
 
 #[derive(Clone, Debug)]
 pub struct LirMoveGroup {
@@ -483,3 +529,5 @@ impl LirAnyUsePolicy {
         self.is_recovered_input
     }
 }
+
+
