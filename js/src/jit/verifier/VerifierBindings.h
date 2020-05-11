@@ -54,6 +54,17 @@ struct LirUseInfo;
 
 typedef const LirGraph* LirGraphHandle;
 
+typedef uint32_t MirDefId;
+typedef uint32_t MirBasicBlockIndex;
+
+struct MirGraph;
+struct MirBasicBlock;
+struct MirInstruction;
+struct MirPhi;
+struct MirOperation;
+
+typedef const MirGraph* MirGraphHandle;
+
 }  // namespace verifier
 }  // namespace jit
 }  // namespace js
@@ -196,6 +207,73 @@ js::jit::verifier::LirUseInfo* verifirefox_ast_lir_use_info_new_with_any_policy(
 js::jit::verifier::LirUseInfo* verifirefox_ast_lir_use_info_new_with_reg_policy(
     js::jit::verifier::VirtualReg virtualReg,
     bool isUsedAtStart);
+
+// MirOperation bindings
+js::jit::verifier::MirOperation* verifirefox_ast_mir_operation_new_other();
+
+// MirGraph bindings
+
+js::jit::verifier::MirGraph* verifirefox_ast_mir_graph_new(size_t n_blocks);
+
+void verifirefox_ast_mir_graph_put_block(
+    js::jit::verifier::MirGraph* graph_ptr,
+    size_t bb_index,
+    js::jit::verifier::MirBasicBlock* bb_ptr);
+
+js::jit::verifier::MirGraphHandle verifirefox_ast_mir_graph_into_handle(
+    js::jit::verifier::MirGraph* graph);
+
+js::jit::verifier::MirGraphHandle verifirefox_ast_mir_graph_clone_handle(
+    const js::jit::verifier::MirGraphHandle* graph_handle);
+
+void verifirefox_ast_mir_graph_drop_handle(
+    js::jit::verifier::MirGraphHandle graph_handle);
+
+// MirInstruction bindings
+
+js::jit::verifier::MirInstruction* verifirefox_ast_mir_instruction_new(
+    js::jit::verifier::MirOperation* operation_ptr,
+    size_t input_capacity,
+    js::jit::verifier::MirDefId def_id);
+
+void verifirefox_ast_mir_instruction_push_input(
+    js::jit::verifier::MirInstruction* instruction_ptr,
+    js::jit::verifier::MirDefId input);
+
+// MirPhi bindings
+
+js::jit::verifier::MirPhi* verifirefox_ast_mir_phi_new(
+    size_t input_capacity,
+    js::jit::verifier::MirDefId input);
+
+void verifirefox_ast_mir_phi_push_input(
+    js::jit::verifier::MirPhi* phi_ptr,
+    js::jit::verifier::MirDefId input);
+
+// MirBasicBlock bindings
+
+js::jit::verifier::MirBasicBlock* verifirefox_ast_mir_basic_block_new(
+    size_t phi_capacity,
+    size_t instruction_capacity,
+    size_t predecessor_capacity,
+    size_t successor_capacity);
+
+void verifirefox_ast_mir_basic_block_push_phi(
+    js::jit::verifier::MirBasicBlock* bb_ptr,
+    js::jit::verifier::MirPhi* phi_ptr);
+
+void verifirefox_ast_mir_basic_block_push_instruction(
+    js::jit::verifier::MirBasicBlock* bb_ptr,
+    js::jit::verifier::MirInstruction* instruction_ptr);
+
+void verifirefox_ast_mir_basic_block_push_predecessor(
+    js::jit::verifier::MirBasicBlock* bb_ptr,
+    js::jit::verifier::MirBasicBlockIndex predecessor_idx);
+
+void verifirefox_ast_mir_basic_block_push_successor(
+    js::jit::verifier::MirBasicBlock* bb_ptr,
+    js::jit::verifier::MirBasicBlockIndex successor_idx);
+
 
 // RegAllocPass bindings
 

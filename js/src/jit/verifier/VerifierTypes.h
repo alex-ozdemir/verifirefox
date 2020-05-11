@@ -76,6 +76,12 @@ typedef
          verifirefox_ast_lir_graph_drop_handle>
   LIRGraph;
 
+typedef
+  Handle<MirGraphHandle,
+         verifirefox_ast_mir_graph_clone_handle,
+         verifirefox_ast_mir_graph_drop_handle>
+  MIRGraph;
+
 }  // namespace verifier
 }  // namespace jit
 }  // namespace js

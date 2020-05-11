@@ -17,6 +17,7 @@ namespace jit {
 namespace verifier {
 
 LIRGraph MarshallLirGraph(const jit::LIRGraph& graph);
+MIRGraph MarshallMirGraph(jit::MIRGraph& graph);
 
 }  // namespace verifier
 }  // namespace jit

@@ -4,8 +4,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+
 #include "jit/verifier/VerifierMarshalling.h"
 
+#include <unordered_map>
+#include <vector>
+
+#include "jit/MIRGraph.h"
 #include "jit/verifier/VerifierBindings.h"
 
 using namespace js;
@@ -397,4 +402,77 @@ verifier::LIRGraph verifier::MarshallLirGraph(
   }
 
   return LIRGraph(verifirefox_ast_lir_graph_into_handle(outGraph));
+}
+
+verifier::MirInstruction* MarshallMirInstruction(const jit::MInstruction& instr) {
+  verifier::MirOperation* op;
+  switch (instr.op()) {
+    default:
+      op = verifirefox_ast_mir_operation_new_other();
+      break;
+  }
+  verifier::MirInstruction* const out =
+    verifirefox_ast_mir_instruction_new(op, instr.numOperands(), instr.id());
+  for (size_t i = 0; i < instr.numOperands(); ++i) {
+    verifirefox_ast_mir_instruction_push_input(out, instr.getOperand(i)->id());
+  }
+  return out;
+}
+
+verifier::MirPhi* MarshallMirPhi(const jit::MPhi& phi) {
+  verifier::MirPhi* const out =
+    verifirefox_ast_mir_phi_new(phi.numOperands(), phi.id());
+  for (size_t i = 0; i < phi.numOperands(); ++i) {
+    verifirefox_ast_mir_phi_push_input(out, phi.getOperand(i)->id());
+  }
+  return out;
+}
+
+verifier::MirBasicBlock* MarshallMirBasicBlock(jit::MBasicBlock& block, const std::unordered_map<uint32_t, size_t>& blockIdsToIndices) {
+  std::vector<verifier::MirPhi*> phis;
+  for (auto phi = block.phisBegin(); phi != block.phisEnd(); ++phi) {
+    phis.push_back(MarshallMirPhi(**phi));
+  }
+  std::vector<verifier::MirInstruction*> instrs;
+  for (auto i = block.begin(); i != block.end(); ++i) {
+    instrs.push_back(MarshallMirInstruction(**i));
+  }
+  verifier::MirBasicBlock* const out =
+    verifirefox_ast_mir_basic_block_new(phis.size(), instrs.size(), block.numPredecessors(), block.numSuccessors());
+  for (auto phi : phis) {
+    verifirefox_ast_mir_basic_block_push_phi(out, phi);
+  }
+  for (auto instr : instrs) {
+    verifirefox_ast_mir_basic_block_push_instruction(out, instr);
+  }
+  for (size_t i = 0; i != block.numPredecessors(); ++i) {
+    verifirefox_ast_mir_basic_block_push_predecessor(out, blockIdsToIndices.at(block.getPredecessor(i)->id()));
+  }
+  for (size_t i = 0; i != block.numSuccessors(); ++i) {
+    verifirefox_ast_mir_basic_block_push_successor(out, blockIdsToIndices.at(block.getSuccessor(i)->id()));
+  }
+  return out;
+}
+
+verifier::MIRGraph verifier::MarshallMirGraph(
+    jit::MIRGraph& graph) {
+  MirGraph* const outGraph =
+      verifirefox_ast_mir_graph_new(graph.numBlocks());
+
+  // Record block indices
+  std::unordered_map<uint32_t, size_t> blockIdsToIndices;
+  {
+    size_t blockIndex = 0;
+    for (jit::MBasicBlock* block : graph) {
+      blockIdsToIndices.emplace( block->id(), blockIndex );
+      ++blockIndex;
+    }
+  }
+
+  //
+  for (jit::MBasicBlock* block : graph) {
+    verifirefox_ast_mir_graph_put_block(outGraph, blockIdsToIndices.at(block->id()), MarshallMirBasicBlock(*block, blockIdsToIndices));
+  }
+
+  return MIRGraph(verifirefox_ast_mir_graph_into_handle(outGraph));
 }
