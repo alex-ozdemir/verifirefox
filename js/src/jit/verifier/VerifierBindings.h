@@ -212,6 +212,14 @@ void verifirefox_passes_spectre_async(
 void verifirefox_passes_spectre_sync(
     const js::jit::verifier::LirGraphHandle graph);
 
+// LirUndefUses bindings
+
+void verifirefox_passes_lir_undef_use_sync(
+    const js::jit::verifier::LirGraphHandle graph);
+
+void verifirefox_passes_lir_undef_use_async(
+    const js::jit::verifier::LirGraphHandle graph);
+
 }  // extern "C"
 
 #endif  // jit_verifier_VerifierBindings_h

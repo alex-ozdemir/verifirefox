@@ -30,6 +30,14 @@ inline void RunRegAllocPassAsync(LIRGraph&& beforeGraph,
   verifirefox_passes_reg_alloc_async(*beforeGraph, *afterGraph);
 }
 
+inline void RunLirUndefUsePassSync(LIRGraph&& graph) {
+  verifirefox_passes_lir_undef_use_sync(*graph);
+}
+
+inline void RunLirUndefUsePassAsync(LIRGraph&& graph) {
+  verifirefox_passes_lir_undef_use_async(*graph);
+}
+
 }  // namespace verifier
 }  // namespace jit
 }  // namespace js

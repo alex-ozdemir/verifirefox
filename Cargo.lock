@@ -292,6 +292,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bit-vec"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f0dc55f2d8a1a85650ac47858bb001b4c0dd73d79e3c455a842925e68d29cd3"
+
+[[package]]
 name = "bitflags"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4614,6 +4620,7 @@ name = "verifirefox"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bit-vec",
  "ref-cast",
  "thiserror",
  "typed_index_derive",
