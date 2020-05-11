@@ -1079,6 +1079,11 @@ bool OptimizeMIR(MIRGenerator* mir) {
   GraphSpewer& gs = mir->graphSpewer();
   TraceLoggerThread* logger = TraceLoggerForCurrentThread();
 
+#ifdef JS_VERIFIER
+  verifier::MIRGraph beforeGraph = verifier::MarshallMirGraph(graph);
+  verifier::RunMirUndefUsePassSync(std::move(beforeGraph));
+#endif
+
   if (mir->shouldCancel("Start")) {
     return false;
   }

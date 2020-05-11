@@ -1,7 +1,4 @@
-use std::fmt;
-
 use typed_index_derive::TypedIndex;
-
 
 pub type MirDefId = u32;
 
@@ -9,7 +6,7 @@ pub type MirGraph = Box<[MirBasicBlock]>;
 
 #[derive(Clone, Copy, Default, Debug, Eq, Ord, PartialEq, PartialOrd, Hash, TypedIndex)]
 #[typed_index(MirBasicBlock)]
-pub struct MirBasicBlockIndex(usize);
+pub struct MirBasicBlockIndex(pub usize);
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Hash, Default)]
 pub struct MirBasicBlock {
@@ -45,6 +42,13 @@ impl MirBasicBlock {
     }
     pub fn push_successor(&mut self, successor: MirBasicBlockIndex) {
         self.successors.push(successor);
+    }
+    pub fn get_instr(&self, is_phi: bool, idx: u32) -> Option<Result<&MirPhi, &MirInstruction>> {
+        if is_phi {
+            self.phis.get(idx as usize).map(Result::Ok)
+        } else {
+            self.instructions.get(idx as usize).map(Result::Err)
+        }
     }
 }
 

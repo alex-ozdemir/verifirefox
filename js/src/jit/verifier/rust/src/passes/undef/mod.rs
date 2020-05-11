@@ -17,6 +17,7 @@ use thiserror::Error;
 use crate::passes::base::Pass;
 
 pub mod lir;
+pub mod mir;
 
 pub trait Set<T>: 'static + Clone + Eq + Debug + Send + Sync {
     fn union(&mut self, other: &Self);

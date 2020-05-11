@@ -298,6 +298,12 @@ void verifirefox_passes_lir_undef_use_sync(
 void verifirefox_passes_lir_undef_use_async(
     const js::jit::verifier::LirGraphHandle graph);
 
+void verifirefox_passes_mir_undef_use_sync(
+    const js::jit::verifier::MirGraphHandle graph);
+
+void verifirefox_passes_mir_undef_use_async(
+    const js::jit::verifier::MirGraphHandle graph);
+
 }  // extern "C"
 
 #endif  // jit_verifier_VerifierBindings_h

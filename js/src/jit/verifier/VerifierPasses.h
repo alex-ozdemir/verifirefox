@@ -38,6 +38,14 @@ inline void RunLirUndefUsePassAsync(LIRGraph&& graph) {
   verifirefox_passes_lir_undef_use_async(*graph);
 }
 
+inline void RunMirUndefUsePassSync(MIRGraph&& graph) {
+  verifirefox_passes_mir_undef_use_sync(*graph);
+}
+
+inline void RunMirUndefUsePassAsync(MIRGraph&& graph) {
+  verifirefox_passes_mir_undef_use_async(*graph);
+}
+
 }  // namespace verifier
 }  // namespace jit
 }  // namespace js
