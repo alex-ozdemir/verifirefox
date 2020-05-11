@@ -207,6 +207,11 @@ void verifirefox_passes_reg_alloc_async(
     const js::jit::verifier::LirGraphHandle beforeGraph,
     const js::jit::verifier::LirGraphHandle afterGraph);
 
+void verifirefox_passes_spectre_async(
+    const js::jit::verifier::LirGraphHandle graph);
+void verifirefox_passes_spectre_sync(
+    const js::jit::verifier::LirGraphHandle graph);
+
 }  // extern "C"
 
 #endif  // jit_verifier_VerifierBindings_h
