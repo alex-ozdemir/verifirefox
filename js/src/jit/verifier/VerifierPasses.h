@@ -17,6 +17,14 @@ inline void RunRegAllocPassSync(LIRGraph&& beforeGraph, LIRGraph&& afterGraph) {
   verifirefox_passes_reg_alloc_sync(*beforeGraph, *afterGraph);
 }
 
+inline void RunSpectrePassSync(LIRGraph&& beforeGraph) {
+  verifirefox_passes_spectre_sync(*beforeGraph);
+}
+
+inline void RunSpectrePassAsync(LIRGraph&& beforeGraph) {
+  verifirefox_passes_spectre_async(*beforeGraph);
+}
+
 inline void RunRegAllocPassAsync(LIRGraph&& beforeGraph,
                                  LIRGraph&& afterGraph) {
   verifirefox_passes_reg_alloc_async(*beforeGraph, *afterGraph);

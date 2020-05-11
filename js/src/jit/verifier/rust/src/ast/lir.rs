@@ -204,7 +204,7 @@ impl LirNode {
 }
 
 macro_rules! operations {
-    [ $($op:ident($($arg:ident),+)),* ] => {
+    [ $($op:ident$(($($arg:ident),+))?),*$(,)? ] => {
         use ref_cast::RefCast;
         $(
             #[derive(RefCast)]
@@ -219,7 +219,7 @@ macro_rules! operations {
                         _ => None,
                     }
                 }
-                operation_field_impl!(0, $($arg),+);
+                operation_field_impl!(0, $($($arg),+)?);
             }
         )*
     };
@@ -238,6 +238,7 @@ macro_rules! operation_field_impl {
         operation_field_impl!($index + 1, $($rest),+);
     };
 
+    ($index:expr,) => {};
 }
 
 #[derive(Clone, Debug)]
@@ -257,7 +258,7 @@ impl Default for LirOperation {
 }
 
 operations![
-    LoadElementV(array,index)
+    LoadElementV(array,index),
     Phi,
     SpectreMaskIndex(index,length),
 ];
