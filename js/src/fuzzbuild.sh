@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-autoconf-2.13
+autoconf2.13
 
 FLAGS="-fsanitize-coverage=trace-pc-guard -g -DJS_MORE_DETERMINISTIC"
 
@@ -30,6 +30,6 @@ export MOZ_LLVM_HACKS=1
 
 mkdir -p fuzzbuild_OPT.OBJ
 cd fuzzbuild_OPT.OBJ
-../configure --enable-debug --enable-optimize --disable-shared-js
+../configure --enable-debug --enable-optimize --disable-shared-js --disable-cranelift
 
 make -j
