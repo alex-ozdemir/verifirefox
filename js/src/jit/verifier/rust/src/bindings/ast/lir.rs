@@ -2,6 +2,8 @@
 
 use std::mem;
 use std::os::raw::c_void;
+use std::ffi::CStr;
+use std::os::raw::c_char;
 
 use crate::ast::lir::{
     LirAllocation, LirAnyUsePolicy, LirDefinition, LirDefinitionPolicy, LirDynamicAllocation,
@@ -103,9 +105,10 @@ pub unsafe extern "C" fn verifirefox_ast_lir_node_new(
     predecessor_capacity: usize,
     successor_capacity: usize,
     is_at_block_start: bool,
+    id: u32,
 ) -> *mut c_void {
     let operation = if operation_ptr.is_null() {
-        LirOperation::Other
+        LirOperation::default()
     } else {
         *(Box::<LirOperation>::from_raw(operation_ptr as *mut _))
     };
@@ -117,6 +120,7 @@ pub unsafe extern "C" fn verifirefox_ast_lir_node_new(
         predecessor_capacity,
         successor_capacity,
         is_at_block_start,
+        LirNodeId::from(id).into(),
     );
     Box::into_raw(Box::new(node)) as *mut _
 }
@@ -178,18 +182,45 @@ pub unsafe extern "C" fn verifirefox_ast_lir_node_push_successor(
 }
 
 // LirOperation bindings
-
-#[no_mangle]
-pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_call_set_element() -> *mut c_void {
-    let operation = LirOperation::CallSetElement;
-    Box::into_raw(Box::new(operation)) as *mut _
+macro_rules! basic_operation {
+    ($rust_name:ident, $c_func:ident) => {
+        #[no_mangle]
+        pub unsafe extern "C" fn $c_func() -> *mut c_void {
+            let operation = LirOperation::$rust_name;
+            Box::into_raw(Box::new(operation)) as *mut _
+        }
+    }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_load_element_v() -> *mut c_void {
-    let operation = LirOperation::LoadElementV;
-    Box::into_raw(Box::new(operation)) as *mut _
-}
+basic_operation!(CallSetElement, verifirefox_ast_lir_operation_new_call_set_element);
+basic_operation!(Phi, verifirefox_ast_lir_operation_new_phi);
+basic_operation!(SpectreMaskIndex, verifirefox_ast_lir_operation_new_spectre_mask_index);
+basic_operation!(ArrayPopShiftV, verifirefox_ast_lir_operation_new_array_pop_shift_v);
+basic_operation!(ArrayPopShiftT, verifirefox_ast_lir_operation_new_array_pop_shift_t);
+basic_operation!(ArrayPushV, verifirefox_ast_lir_operation_new_array_push_v);
+basic_operation!(ArrayPushT, verifirefox_ast_lir_operation_new_array_push_t);
+basic_operation!(StoreElementV, verifirefox_ast_lir_operation_new_store_element_v);
+basic_operation!(StoreElementT, verifirefox_ast_lir_operation_new_store_element_t);
+basic_operation!(StoreElementHoleV, verifirefox_ast_lir_operation_new_store_element_hole_v);
+basic_operation!(StoreElementHoleT, verifirefox_ast_lir_operation_new_store_element_hole_t);
+basic_operation!(FallibleStoreElementT, verifirefox_ast_lir_operation_new_fallible_store_element_t);
+basic_operation!(FallibleStoreElementV, verifirefox_ast_lir_operation_new_fallible_store_element_v);
+basic_operation!(StoreUnboxedScalar, verifirefox_ast_lir_operation_new_store_unboxed_scalar);
+basic_operation!(StoreUnboxedBigInt, verifirefox_ast_lir_operation_new_store_unboxed_big_int);
+basic_operation!(StoreTypedArrayElementHole, verifirefox_ast_lir_operation_new_store_typed_array_element_hole);
+basic_operation!(StoreTypedArrayElementHoleBigInt, verifirefox_ast_lir_operation_new_store_typed_array_element_hole_big_int);
+basic_operation!(LoadElementV, verifirefox_ast_lir_operation_new_load_element_v);
+basic_operation!(LoadElementT, verifirefox_ast_lir_operation_new_load_element_t);
+basic_operation!(LoadElementHole, verifirefox_ast_lir_operation_new_load_element_hole);
+basic_operation!(LoadUnboxedScalar, verifirefox_ast_lir_operation_new_load_unboxed_scalar);
+basic_operation!(LoadUnboxedBigInt, verifirefox_ast_lir_operation_new_load_unboxed_big_int);
+basic_operation!(LoadTypedArrayElementHole, verifirefox_ast_lir_operation_new_load_typed_array_element_hole);
+basic_operation!(LoadTypedArrayElementHoleBigInt, verifirefox_ast_lir_operation_new_load_typed_array_element_hole_big_int);
+
+basic_operation!(ArrayLength, verifirefox_ast_lir_operation_new_array_length);
+basic_operation!(TypedArrayLength, verifirefox_ast_lir_operation_new_typed_array_length);
+basic_operation!(InitializedLength, verifirefox_ast_lir_operation_new_initialized_length);
+basic_operation!(SetInitializedLength, verifirefox_ast_lir_operation_new_set_initialized_length);
 
 #[no_mangle]
 pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_move_group(
@@ -201,14 +232,11 @@ pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_move_group(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_phi() -> *mut c_void {
-    let operation = LirOperation::Phi;
-    Box::into_raw(Box::new(operation)) as *mut _
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_spectre_mask_index() -> *mut c_void {
-    let operation = LirOperation::SpectreMaskIndex;
+pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_other(
+    move_group_ptr: *const c_char,
+) -> *mut c_void {
+    let op_name = CStr::from_ptr(move_group_ptr).to_string_lossy().into_owned();
+    let operation = LirOperation::Other(op_name);
     Box::into_raw(Box::new(operation)) as *mut _
 }
 

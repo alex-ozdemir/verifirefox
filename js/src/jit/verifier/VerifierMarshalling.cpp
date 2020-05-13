@@ -224,14 +224,37 @@ verifier::LirNode* MarshallLirNode(const LNode& node,
   verifier::LirOperation* outOperation;
 
   switch (node.op()) {
-    case LNode::Opcode::CallSetElement: {
-      outOperation = verifirefox_ast_lir_operation_new_call_set_element();
-      break;
+    #define OP_CASE(op, func) case LNode::Opcode::op: {\
+      outOperation = func();\
+      break;\
     }
-    case LNode::Opcode::LoadElementV: {
-      outOperation = verifirefox_ast_lir_operation_new_load_element_v();
-      break;
-    }
+
+    OP_CASE(CallSetElement, verifirefox_ast_lir_operation_new_call_set_element)
+    OP_CASE(Phi, verifirefox_ast_lir_operation_new_phi)
+    OP_CASE(SpectreMaskIndex, verifirefox_ast_lir_operation_new_spectre_mask_index)
+    OP_CASE(ArrayPopShiftV, verifirefox_ast_lir_operation_new_array_pop_shift_v)
+    OP_CASE(ArrayPopShiftT, verifirefox_ast_lir_operation_new_array_pop_shift_t)
+    OP_CASE(ArrayPushV, verifirefox_ast_lir_operation_new_array_push_v)
+    OP_CASE(ArrayPushT, verifirefox_ast_lir_operation_new_array_push_t)
+    OP_CASE(StoreElementV, verifirefox_ast_lir_operation_new_store_element_v)
+    OP_CASE(StoreElementT, verifirefox_ast_lir_operation_new_store_element_t)
+    OP_CASE(StoreElementHoleV, verifirefox_ast_lir_operation_new_store_element_hole_v)
+    OP_CASE(StoreElementHoleT, verifirefox_ast_lir_operation_new_store_element_hole_t)
+    OP_CASE(FallibleStoreElementT, verifirefox_ast_lir_operation_new_fallible_store_element_t)
+    OP_CASE(FallibleStoreElementV, verifirefox_ast_lir_operation_new_fallible_store_element_v)
+    OP_CASE(StoreUnboxedScalar, verifirefox_ast_lir_operation_new_store_unboxed_scalar)
+    OP_CASE(StoreTypedArrayElementHole, verifirefox_ast_lir_operation_new_store_typed_array_element_hole)
+    OP_CASE(LoadElementV, verifirefox_ast_lir_operation_new_load_element_v)
+    OP_CASE(LoadElementT, verifirefox_ast_lir_operation_new_load_element_t)
+    OP_CASE(LoadElementHole, verifirefox_ast_lir_operation_new_load_element_hole)
+    OP_CASE(LoadUnboxedScalar, verifirefox_ast_lir_operation_new_load_unboxed_scalar)
+    OP_CASE(LoadTypedArrayElementHole, verifirefox_ast_lir_operation_new_load_typed_array_element_hole)
+
+    OP_CASE(ArrayLength, verifirefox_ast_lir_operation_new_array_length)
+    OP_CASE(TypedArrayLength, verifirefox_ast_lir_operation_new_typed_array_length)
+    OP_CASE(InitializedLength, verifirefox_ast_lir_operation_new_initialized_length);
+    OP_CASE(SetInitializedLength, verifirefox_ast_lir_operation_new_set_initialized_length);
+    #undef OP_CASE
     case LNode::Opcode::MoveGroup: {
       const LMoveGroup& moveGroup = *node.toMoveGroup();
       verifier::LirMoveGroup* const outMoveGroup =
@@ -239,16 +262,8 @@ verifier::LirNode* MarshallLirNode(const LNode& node,
       outOperation = verifirefox_ast_lir_operation_new_move_group(outMoveGroup);
       break;
     }
-    case LNode::Opcode::Phi: {
-      outOperation = verifirefox_ast_lir_operation_new_phi();
-      break;
-    }
-    case LNode::Opcode::SpectreMaskIndex: {
-      outOperation = verifirefox_ast_lir_operation_new_spectre_mask_index();
-      break;
-    }
     default: {
-      outOperation = nullptr;
+      outOperation = verifirefox_ast_lir_operation_new_other(node.opName());
       break;
     }
   }
@@ -277,7 +292,7 @@ verifier::LirNode* MarshallLirNode(const LNode& node,
 
   verifier::LirNode* const outNode = verifirefox_ast_lir_node_new(
       outOperation, numOperands, numDefs, numTemps, numPredecessors,
-      numSuccessors, prevNode == nullptr);
+      numSuccessors, prevNode == nullptr, node.id());
 
   for (size_t operandIndex = 0; operandIndex < numOperands; operandIndex++) {
     const LAllocation& operand =

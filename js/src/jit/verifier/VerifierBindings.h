@@ -113,7 +113,7 @@ void verifirefox_ast_lir_graph_drop_handle(
 js::jit::verifier::LirNode* verifirefox_ast_lir_node_new(
     js::jit::verifier::LirOperation* operation, size_t operandCapacity,
     size_t defCapacity, size_t tempCapacity, size_t predecessorCapacity,
-    size_t successorCapacity, bool isAtBlockStart);
+    size_t successorCapacity, bool isAtBlockStart, uint32_t id);
 
 void verifirefox_ast_lir_node_push_operand(
     js::jit::verifier::LirNode* node,
@@ -134,21 +134,63 @@ void verifirefox_ast_lir_node_push_successor(
     js::jit::verifier::LirNodeId successorNodeId);
 
 // LirOperation bindings
+js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_move_group(
+    js::jit::verifier::LirMoveGroup* moveGroup);
 
-js::jit::verifier::LirOperation*
-verifirefox_ast_lir_operation_new_call_set_element();
+#define op(id) js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_##id()
 
-js::jit::verifier::LirOperation*
-verifirefox_ast_lir_operation_new_load_element_v();
+op(call_set_element);
+op(load_element_v);
+op(phi);
+op(spectre_mask_index);
+
+op(call_set_element);
+op(phi);
+op(spectre_mask_index);
+op(array_pop_shift_v);
+op(array_pop_shift_t);
+op(array_push_v);
+op(array_push_t);
+op(store_element_v);
+op(store_element_t);
+op(store_element_hole_v);
+op(store_element_hole_t);
+op(fallible_store_element_t);
+op(fallible_store_element_v);
+op(store_unboxed_scalar);
+op(store_unboxed_big_int);
+op(store_typed_array_element_hole);
+op(store_typed_array_element_hole_big_int);
+op(load_element_v);
+op(load_element_t);
+op(load_element_hole);
+op(load_unboxed_scalar);
+op(load_unboxed_big_int);
+op(load_typed_array_element_hole);
+op(load_typed_array_element_hole_big_int);
+
+op(array_length);
+op(typed_array_length);
+op(initialized_length);
+op(set_initialized_length);
+// js::jit::verifier::LirOperation*
+// verifirefox_ast_lir_operation_new_call_set_element();
+
+// js::jit::verifier::LirOperation*
+// verifirefox_ast_lir_operation_new_load_element_v();
 
 js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_move_group(
     js::jit::verifier::LirMoveGroup* moveGroup);
 
-js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_phi();
+js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_other(
+    const char*);
 
-js::jit::verifier::LirOperation*
-verifirefox_ast_lir_operation_new_spectre_mask_index();
+// js::jit::verifier::LirOperation* verifirefox_ast_lir_operation_new_phi();
 
+// js::jit::verifier::LirOperation*
+// verifirefox_ast_lir_operation_new_spectre_mask_index();
+
+#undef op
 // LirMoveGroup bindings
 
 js::jit::verifier::LirMoveGroup* verifirefox_ast_lir_move_group_new(

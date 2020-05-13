@@ -1,5 +1,5 @@
-use std::fmt;
 use std::collections::HashSet;
+use std::fmt;
 
 use typed_index_derive::TypedIndex;
 
@@ -133,6 +133,7 @@ pub struct LirNode {
     predecessors: Vec<LirNodeIndex>,
     successors: Vec<LirNodeIndex>,
     is_at_block_start: bool,
+    index: LirNodeIndex,
 }
 
 impl LirNode {
@@ -144,15 +145,17 @@ impl LirNode {
         predecessor_capacity: usize,
         successor_capacity: usize,
         is_at_block_start: bool,
+        index: LirNodeIndex,
     ) -> Self {
         LirNode {
-            operation: operation,
+            operation,
             operands: Vec::with_capacity(operand_capacity),
             defs: Vec::with_capacity(def_capacity),
             temps: Vec::with_capacity(temp_capacity),
             predecessors: Vec::with_capacity(predecessor_capacity),
             successors: Vec::with_capacity(successor_capacity),
-            is_at_block_start: is_at_block_start,
+            is_at_block_start,
+            index,
         }
     }
 
@@ -204,6 +207,10 @@ impl LirNode {
         self.successors.push(successor_node_id.into());
     }
 
+    pub fn index(&self) -> LirNodeIndex {
+        self.index
+    }
+
     pub fn is_at_block_start(&self) -> bool {
         self.is_at_block_start
     }
@@ -219,70 +226,143 @@ impl LirNode {
             .chain(
                 self.defs
                     .iter()
-                    .filter_map(|od| od.as_ref().map(|d| d.virtual_reg)))
+                    .filter_map(|od| od.as_ref().map(|d| d.virtual_reg)),
+            )
             .collect()
     }
-}
-
-macro_rules! operations {
-    [ $($op:ident$(($($arg:ident),+))?),*$(,)? ] => {
-        use ref_cast::RefCast;
-        $(
-            #[derive(RefCast)]
-            #[repr(transparent)]
-            pub struct $op(LirNode);
-            
-            #[allow(dead_code)]
-            impl $op {
-                pub fn from_node(node: &LirNode) -> Option<&Self> {
-                    match node.operation() {
-                        LirOperation::$op => Some($op::ref_cast(node)),
-                        _ => None,
-                    }
-                }
-                operation_field_impl!(0, $($($arg),+)?);
-            }
-        )*
-    };
-}
-
-macro_rules! operation_field_impl {
-    ($index:expr, $field:ident) => {
-        pub fn $field(&self) -> &LirAllocation {
-            &self.0.operands()[$index]
-        }
-    };
-
-    ($index:expr, $field:ident, $($rest:ident),+) => {
-        operation_field_impl!($index, $field);
-
-        operation_field_impl!($index + 1, $($rest),+);
-    };
-
-    ($index:expr,) => {};
 }
 
 #[derive(Clone, Debug)]
 pub enum LirOperation {
     CallSetElement,
-    LoadElementV,
     MoveGroup(LirMoveGroup),
     Phi,
+
     SpectreMaskIndex,
-    Other,
+
+    ArrayPopShiftV,
+    ArrayPopShiftT,
+    ArrayPushV,
+    ArrayPushT,
+    StoreElementV,
+    StoreElementT,
+    StoreElementHoleV,
+    StoreElementHoleT,
+    FallibleStoreElementT,
+    FallibleStoreElementV,
+    StoreUnboxedScalar,
+    StoreUnboxedBigInt,
+    StoreTypedArrayElementHole,
+    StoreTypedArrayElementHoleBigInt,
+    LoadElementV,
+    LoadElementT,
+    LoadElementHole,
+    LoadUnboxedScalar,
+    LoadUnboxedBigInt,
+    LoadTypedArrayElementHole,
+    LoadTypedArrayElementHoleBigInt,
+
+    ArrayLength,
+    TypedArrayLength,
+    InitializedLength,
+    SetInitializedLength,
+    Other(String),
 }
 
 impl Default for LirOperation {
     fn default() -> Self {
-        LirOperation::Other
+        LirOperation::Other("uninit".to_string())
     }
 }
 
-operations![
-    LoadElementV(array,index),
-    Phi,
-    SpectreMaskIndex(index,length),
-];
+pub(crate) mod typed_ops {
+    use super::*;
+    macro_rules! operation_args {
+        [ $($op:ident$(($($arg:ident),+))?),*$(,)? ] => {
+            use ref_cast::RefCast;
+            $(
+                #[derive(RefCast)]
+                #[repr(transparent)]
+                pub struct $op(LirNode);
+
+                #[allow(dead_code)]
+                impl $op {
+                    pub fn from_node(node: &LirNode) -> Option<&Self> {
+                        match node.operation() {
+                            LirOperation::$op => Some($op::ref_cast(node)),
+                            _ => None,
+                        }
+                    }
+
+                    pub fn node(&self) -> &LirNode {
+                        &self.0
+                    }
+
+                    operation_field_impl!(0, $($($arg),+)?);
+                }
+            )*
+        };
+    }
+
+    macro_rules! operation_field_impl {
+        ($index:expr, $field:ident) => {
+            pub fn $field(&self) -> &LirAllocation {
+                &self.0.operands()[$index]
+            }
+        };
+
+        ($index:expr, $field:ident, $($rest:ident),+) => {
+            operation_field_impl!($index, $field);
+
+            operation_field_impl!($index + 1, $($rest),+);
+        };
+
+        ($index:expr,) => {};
+    }
+
+    operation_args![
+        Phi,
+        CallSetElement,
+        SpectreMaskIndex(index, length),
+        ArrayPushV(array, value),
+        ArrayPushT(array, value),
+        StoreElementV(array, index, value),
+        StoreElementT(array, index, value),
+        StoreElementHoleV(object, array, index, value),
+        StoreElementHoleT(object, array, index, value),
+        FallibleStoreElementT(object, array, index),
+        FallibleStoreElementV(object, array, index),
+        StoreUnboxedScalar(array, index, value),
+        StoreUnboxedBigInt(array, index, value),
+        StoreTypedArrayElementHole(array, length, index, value),
+        StoreTypedArrayElementHoleBigInt(array, length, index, value),
+        LoadElementV(array, index),
+        LoadElementT(array, index),
+        LoadElementHole(array, index, init_length),
+        LoadUnboxedScalar(array, index),
+        LoadUnboxedBigInt(array, index),
+        LoadTypedArrayElementHole(object, index),
+        LoadTypedArrayElementHoleBigInt(object, index),
+        ArrayLength(array),
+        TypedArrayLength(obj),
+        InitializedLength(array),
+    ];
+
+
+    #[macro_export]
+    macro_rules! match_op {
+
+        (match $node:ident { $($tt:tt)* }) => { match_op!(match ($node) { $($tt)* }) };
+
+        (match ($node:expr) {
+            $( typed_ops::$op:ident($it:ident) => $res:expr, )*
+            _ => $catch_all:expr $(,)?
+        }) => {{
+            $( if let Some($it) = typed_ops::$op::from_node($node) { $res } else )*
+            { $catch_all }
+        }};
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct LirMoveGroup {
@@ -416,7 +496,7 @@ impl LirFixedDefinitionPolicy {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LirAllocation {
     Bogus,
     Constant,
@@ -441,7 +521,7 @@ impl LirAllocation {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LirStaticAllocation {
     physical_loc: PhysicalLoc,
     use_info: Option<LirUseInfo>,
@@ -464,7 +544,7 @@ impl LirStaticAllocation {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LirDynamicAllocation {
     use_info: LirUseInfo,
 }
@@ -479,7 +559,7 @@ impl LirDynamicAllocation {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LirUseInfo {
     virtual_reg: VirtualReg,
     is_used_at_start: bool,
@@ -530,5 +610,3 @@ impl LirAnyUsePolicy {
         self.is_recovered_input
     }
 }
-
-
