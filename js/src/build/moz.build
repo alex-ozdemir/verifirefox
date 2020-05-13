@@ -11,7 +11,8 @@ CONFIGURE_SUBST_FILES += [
 
 LIBRARY_DEFINES['EXPORT_JS_API'] = True
 
-LIBRARY_DEFINES['MOZ_HAS_MOZGLUE'] = True
+if not CONFIG['JS_STANDALONE']:
+    LIBRARY_DEFINES['MOZ_HAS_MOZGLUE'] = True
 
 # JavaScript must be built shared, even for static builds, as it is used by
 # other modules which are always built shared. Failure to do so results in
@@ -34,7 +35,6 @@ if CONFIG['JS_SHARED_LIBRARY']:
         SYMBOLS_FILE = '!symverscript'
 else:
     Library('js')
-    USE_LIBS += ['mozglue']
 
 FORCE_STATIC_LIB = True
 STATIC_LIBRARY_NAME = 'js_static'
