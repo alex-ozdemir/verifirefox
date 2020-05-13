@@ -518,7 +518,7 @@ void JSONSerializer::serializeMDefinition(MDefinition& def) {
   property("type", StringFromMIRType(def.type()));
   property("opName", def.opName());
 
-  beginListProperty("operands");
+  beginObjectProperty("operands");
   for (size_t i = 0; i < def.numOperands(); i++) {
     auto op = def.getOperand(i);
     beginObject();
@@ -528,7 +528,7 @@ void JSONSerializer::serializeMDefinition(MDefinition& def) {
     }
     endObject();
   }
-  endList();
+  endObject();
 
   if (def.isInstruction()) {
     if (MResumePoint* resume = def.toInstruction()->resumePoint()) {
