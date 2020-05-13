@@ -38,9 +38,14 @@ pub enum SpectrePassError {
         spectre: NodeInfo,
         length_src: NodeInfo,
         array: LirAllocation,
+    },
+
+    #[error("Array {array:?} length modified at {modified:?} between taking length {length_src:?} and access {access:?}. Spectre check: {spectre:?}")]
+    ArrayModifiedBetweenLengthAndAccess {
+        access: NodeInfo,
+        spectre: NodeInfo,
+        length_src: NodeInfo,
+        array: LirAllocation,
+        modified: NodeInfo,
     }
 }
-
-
-pub type SpectreResult<T> = Result<T, SpectrePassError>;
-

@@ -324,6 +324,8 @@ pub(crate) mod typed_ops {
         Phi,
         CallSetElement,
         SpectreMaskIndex(index, length),
+        ArrayPopShiftV(object),
+        ArrayPopShiftT(object),
         ArrayPushV(array, value),
         ArrayPushT(array, value),
         StoreElementV(array, index, value),
@@ -346,6 +348,7 @@ pub(crate) mod typed_ops {
         ArrayLength(array),
         TypedArrayLength(obj),
         InitializedLength(array),
+        SetInitializedLength(array, index),
     ];
 
 
