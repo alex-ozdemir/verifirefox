@@ -5,20 +5,18 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "jit/JSONSerializer.h"
-#include "jit/MIR.h"
-#include "jit/MIRGraph.h"
 
 using namespace js;
 using namespace js::jit;
 using namespace js::jit::details;
 
-void JSONSerializer::beginPass(uint32_t graphId, const char* const pass, const char* type) {
+void JSONSerializer::beginPass(uint32_t graphId, const char* const pass) {
   beginObject();
 
   property("graphId", graphId);
   property("pass", pass);
 
-  beginObjectProperty(type);
+  beginObjectProperty("lir");
 }
 
 void JSONSerializer::endPass() {
@@ -26,10 +24,6 @@ void JSONSerializer::endPass() {
 
   endObject();
 }
-
-//
-// LIR
-//
 
 void JSONSerializer::serializeLIR(const LIRGraph& lir) {
   beginListProperty("blocks");
@@ -425,141 +419,4 @@ void JSONSerializer::serializeLMoveGroupProperty(
     propertyName(name);
     out_.put("null");
   }
-}
-
-//
-// MIR
-//
-
-void JSONSerializer::serializeMIR(MIRGraph& mir) {
-  beginListProperty("blocks");
-  for (MBasicBlockIterator iter(mir.begin()); iter != mir.end(); iter++) {
-    beginObject();
-    serializeMBasicBlock(**iter);
-    endObject();
-  }
-  endList();
-}
-
-void JSONSerializer::serializeMBasicBlock(MBasicBlock& block) {
-  property("id", block.id());
-
-  property("kind", block.isLoopHeader() ? "loopHeader" :
-      block.isDead() ? "dead" :
-      block.isSplitEdge() ? "splitEdge" :
-      "normal");
-  // should probably not be pending-loop-header (seems internal)
-
-  property("unreachable", block.unreachable());
-
-  property("marked", block.isMarked());
-
-
-  beginListProperty("predecessors");
-
-  for (size_t predecessorIndex = 0; predecessorIndex < block.numPredecessors();
-      ++predecessorIndex) {
-    const MBasicBlock& predecessor = *block.getPredecessor(predecessorIndex);
-    value(predecessor.id());
-  }
-
-  endList();
-
-  beginListProperty("successors");
-
-  for (size_t successorIndex = 0; successorIndex < block.numSuccessors();
-      ++successorIndex) {
-    const MBasicBlock& successor = *block.getSuccessor(successorIndex);
-    value(successor.id());
-  }
-
-  endList();
-
-  // serializeLMoveGroupProperty("entryMoves", block.entryMoves());
-  // serializeLMoveGroupProperty("exitMoves", block.exitMoves());
-
-  beginObjectProperty("resumePoint");
-  if (MResumePoint* resume = block.entryResumePoint()) {
-    serializeMNode(*resume);
-  }
-  endObject();
-
-  beginListProperty("phiNodes");
-  for (MPhiIterator iter(block.phisBegin()); iter != block.phisEnd(); iter++) {
-    beginObject();
-    serializeMNode(**iter);
-    endObject();
-  }
-  endList();
-
-  beginListProperty("instructionNodes");
-  for (MInstructionIterator iter(block.begin()); iter != block.end(); iter++) {
-    beginObject();
-    serializeMNode(**iter);
-    endObject();
-  }
-  endList();
-
-}
-
-void JSONSerializer::serializeMNode(MNode& node) {
-
-  property("kind", node.isDefinition() ? "definition" : "resumePoint");
-
-  if (node.isDefinition()) {
-    serializeMDefinition(*node.toDefinition());
-  } else {
-    serializeMResumePoint(*node.toResumePoint());
-  }
-}
-
-void JSONSerializer::serializeMDefinition(MDefinition& def) {
-  property("id", def.id());
-  property("type", StringFromMIRType(def.type()));
-  property("opName", def.opName());
-
-  beginObjectProperty("operands");
-  for (size_t i = 0; i < def.numOperands(); i++) {
-    auto op = def.getOperand(i);
-    beginObject();
-    if (op) {
-      property("name", op->opName());
-      property("type", StringFromMIRType(op->type()));
-    }
-    endObject();
-  }
-  endObject();
-
-  if (def.isInstruction()) {
-    if (MResumePoint* resume = def.toInstruction()->resumePoint()) {
-      beginObjectProperty("resumePoint");
-      serializeMResumePoint(*resume);
-      endObject();
-    }
-  }
-}
-
-void JSONSerializer::serializeMResumePoint(MResumePoint& rp) {
-  property("mode", rp.mode() == MResumePoint::ResumeAt ? "ResumeAt" :
-      rp.mode() == MResumePoint::ResumeAfter ? "ResumeAfter" : "Outer");
-
-  if (rp.mode() == MResumePoint::ResumeAt && rp.instruction()) {
-    property("resumeAt", rp.instruction()->id());
-  }
-
-  if (MResumePoint* c = rp.caller()) {
-    property("callerInBlock", c->block()->id());
-  }
-
-  beginListProperty("operands");
-  for (size_t i = 0; i < rp.numOperands(); i++) {
-    auto op = rp.getOperand(i);
-    beginObject();
-    if (op) {
-      property("name", op->opName());
-      property("type", StringFromMIRType(op->type()));
-    }
-    endObject();
-  }
-  endList();
 }

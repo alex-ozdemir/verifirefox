@@ -9,7 +9,6 @@
 
 #include "jit/LIR.h"
 #include "jit/MIR.h"
-#include "jit/MIRGraph.h"
 #include "vm/JSONPrinter.h"
 
 namespace js {
@@ -19,10 +18,8 @@ class JSONSerializer : JSONPrinter {
  public:
   explicit JSONSerializer(GenericPrinter& out) : JSONPrinter(out) {}
 
-  void beginPass(uint32_t graphId, const char* pass, const char* type);
+  void beginPass(uint32_t graphId, const char* pass);
   void endPass();
-
-  // LIR
 
   void serializeLIR(const LIRGraph& lir);
   void serializeLBlock(const LBlock& block);
@@ -33,14 +30,6 @@ class JSONSerializer : JSONPrinter {
 
   void serializeLMoveGroup(const LMoveGroup& instruction);
   void serializeLMove(const LMove& move);
-
-  // MIR
-
-  void serializeMIR(MIRGraph& mir);
-  void serializeMBasicBlock(MBasicBlock& block);
-  void serializeMNode(MNode& node);
-  void serializeMDefinition(MDefinition& def);
-  void serializeMResumePoint(MResumePoint& rp);
 
  private:
   void serializeLMoveGroupProperty(const char* name,

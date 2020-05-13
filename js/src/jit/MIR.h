@@ -503,8 +503,8 @@ class MDefinition : public MNode {
 
   Opcode op() const { return op_; }
 
-  const char* opName() const;
 #ifdef JS_JITSPEW
+  const char* opName() const;
   void printName(GenericPrinter& out) const;
   static void PrintOpcodeName(GenericPrinter& out, Opcode op);
   virtual void printOpcode(GenericPrinter& out) const;
