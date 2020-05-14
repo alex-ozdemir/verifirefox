@@ -162,7 +162,9 @@ bool jit::InitializeJit() {
 #endif
 
 #ifdef JS_VERIFIER
-  verifier::ExecuteInit(&VerifyFailCallback);
+  if (!verifier::ExecuteInit(&VerifyFailCallback)) {
+    return false;
+  }
 #endif
 
 #if defined(JS_CODEGEN_ARM)

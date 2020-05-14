@@ -1,32 +1,40 @@
-use std::sync::mpsc::{self, Sender};
-use std::thread;
+use std::cmp;
 
-use anyhow::Error;
+use anyhow::{Context, Error};
+use rayon::{ThreadPool, ThreadPoolBuilder};
 
 use crate::passes::Pass;
+
+const MIN_THREAD_COUNT: usize = 1;
+const MAX_THREAD_COUNT: usize = 4;
 
 static mut STATE: Option<State> = None;
 
 struct State {
-    async_pass_sender: Sender<Box<dyn Pass>>,
+    async_thread_pool: ThreadPool,
     fail_cb: FailCallback,
 }
 
 pub type FailCallback = Box<dyn Fn()>;
 
-pub unsafe fn init(fail_cb: FailCallback) {
-    let (async_pass_sender, async_pass_receiver) = mpsc::channel();
+pub unsafe fn init(fail_cb: FailCallback) -> Result<(), Error> {
+    let num_async_threads = cmp::max(
+        MIN_THREAD_COUNT,
+        cmp::min(MAX_THREAD_COUNT, num_cpus::get()),
+    );
 
-    thread::spawn(move || {
-        for pass in async_pass_receiver.iter() {
-            sync_pass(pass);
-        }
-    });
+    let async_thread_pool = ThreadPoolBuilder::new()
+        .num_threads(num_async_threads)
+        .thread_name(|thread_index| format!("Verifirefox Thread {}", thread_index))
+        .build()
+        .context("Failed to initialize async verification thread pool")?;
 
     STATE = Some(State {
-        async_pass_sender,
+        async_thread_pool,
         fail_cb,
-    })
+    });
+
+    Ok(())
 }
 
 fn with_state<F, T>(f: F) -> T
@@ -73,11 +81,5 @@ pub fn async_pass<T>(pass: T)
 where
     T: Pass,
 {
-    thread_local! {
-        static SENDER: Sender<Box<dyn Pass>> = with_state(|state| state.async_pass_sender.clone());
-    }
-
-    SENDER.with(|sender| {
-        let _ = sender.send(Box::new(pass));
-    });
+    with_state(move |state| state.async_thread_pool.spawn(move || sync_pass(pass)));
 }

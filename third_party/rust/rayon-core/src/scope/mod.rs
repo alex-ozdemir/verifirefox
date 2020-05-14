@@ -4,10 +4,11 @@
 //! [`scope()`]: fn.scope.html
 //! [`join()`]: ../join/join.fn.html
 
-use job::{HeapJob, JobFifo};
-use latch::{CountLatch, Latch};
-use log::Event::*;
-use registry::{in_worker, Registry, WorkerThread};
+use crate::job::{HeapJob, JobFifo};
+use crate::latch::{CountLatch, Latch};
+use crate::log::Event::*;
+use crate::registry::{in_worker, Registry, WorkerThread};
+use crate::unwind;
 use std::any::Any;
 use std::fmt;
 use std::marker::PhantomData;
@@ -15,9 +16,7 @@ use std::mem;
 use std::ptr;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::Arc;
-use unwind;
 
-mod internal;
 #[cfg(test)]
 mod test;
 
@@ -635,7 +634,7 @@ impl<'scope> fmt::Debug for Scope<'scope> {
 }
 
 impl<'scope> fmt::Debug for ScopeFifo<'scope> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("ScopeFifo")
             .field("num_fifos", &self.fifos.len())
             .field("pool_id", &self.base.registry.id())

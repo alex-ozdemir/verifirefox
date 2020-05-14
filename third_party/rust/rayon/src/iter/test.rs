@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::*;
-use prelude::*;
+use crate::prelude::*;
 use rayon_core::*;
 
 use rand::distributions::Standard;
@@ -399,6 +399,7 @@ fn check_cmp_to_seq() {
 #[test]
 fn check_cmp_rng_to_seq() {
     let mut rng = seeded_rng();
+    let rng = &mut rng;
     let a: Vec<i32> = rng.sample_iter(&Standard).take(1024).collect();
     let b: Vec<i32> = rng.sample_iter(&Standard).take(1024).collect();
     for i in 0..a.len() {
@@ -552,6 +553,7 @@ fn check_partial_cmp_to_seq() {
 #[test]
 fn check_partial_cmp_rng_to_seq() {
     let mut rng = seeded_rng();
+    let rng = &mut rng;
     let a: Vec<i32> = rng.sample_iter(&Standard).take(1024).collect();
     let b: Vec<i32> = rng.sample_iter(&Standard).take(1024).collect();
     for i in 0..a.len() {
@@ -1522,7 +1524,7 @@ fn par_iter_unindexed_flat_map() {
 
 #[test]
 fn min_max() {
-    let mut rng = seeded_rng();
+    let rng = seeded_rng();
     let a: Vec<i32> = rng.sample_iter(&Standard).take(1024).collect();
     for i in 0..=a.len() {
         let slice = &a[..i];
@@ -1533,7 +1535,7 @@ fn min_max() {
 
 #[test]
 fn min_max_by() {
-    let mut rng = seeded_rng();
+    let rng = seeded_rng();
     // Make sure there are duplicate keys, for testing sort stability
     let r: Vec<i32> = rng.sample_iter(&Standard).take(512).collect();
     let a: Vec<(i32, u16)> = r.iter().chain(&r).cloned().zip(0..).collect();
@@ -1552,7 +1554,7 @@ fn min_max_by() {
 
 #[test]
 fn min_max_by_key() {
-    let mut rng = seeded_rng();
+    let rng = seeded_rng();
     // Make sure there are duplicate keys, for testing sort stability
     let r: Vec<i32> = rng.sample_iter(&Standard).take(512).collect();
     let a: Vec<(i32, u16)> = r.iter().chain(&r).cloned().zip(0..).collect();
@@ -1851,7 +1853,7 @@ fn check_partition_map() {
 
 #[test]
 fn check_either() {
-    type I = ::vec::IntoIter<i32>;
+    type I = crate::vec::IntoIter<i32>;
     type E = Either<I, I>;
 
     let v: Vec<i32> = (0..1024).collect();

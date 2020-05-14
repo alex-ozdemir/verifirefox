@@ -72,6 +72,12 @@
 //! to mirror the unstable `std::ops::Try` with implementations for `Option` and
 //! `Result`, where `Some`/`Ok` values will let those iterators continue, but
 //! `None`/`Err` values will exit early.
+//!
+//! A note about object safety: It is currently _not_ possible to wrap
+//! a `ParallelIterator` (or any trait that depends on it) using a
+//! `Box<dyn ParallelIterator>` or other kind of dynamic allocation,
+//! because `ParallelIterator` is **not object-safe**.
+//! (This keeps the implementation simpler and allows extra optimizations.)
 
 use self::plumbing::*;
 use self::private::Try;
@@ -135,6 +141,8 @@ mod zip;
 pub use self::zip::Zip;
 mod zip_eq;
 pub use self::zip_eq::ZipEq;
+mod multizip;
+pub use self::multizip::MultiZip;
 mod interleave;
 pub use self::interleave::Interleave;
 mod interleave_shortest;
@@ -395,9 +403,6 @@ pub trait ParallelIterator: Sized + Send {
     /// # Examples
     ///
     /// ```
-    /// extern crate rand;
-    /// extern crate rayon;
-    ///
     /// use rand::Rng;
     /// use rayon::prelude::*;
     ///
@@ -506,9 +511,6 @@ pub trait ParallelIterator: Sized + Send {
     /// # Examples
     ///
     /// ```
-    /// extern crate rand;
-    /// extern crate rayon;
-    ///
     /// use rand::Rng;
     /// use rayon::prelude::*;
     ///
@@ -628,9 +630,6 @@ pub trait ParallelIterator: Sized + Send {
     /// # Examples
     ///
     /// ```
-    /// extern crate rand;
-    /// extern crate rayon;
-    ///
     /// use rand::Rng;
     /// use rayon::prelude::*;
     ///

@@ -63,6 +63,10 @@ class Handle {
       DropInner();
     }
 
+    Handle Clone() const {
+      return Handle(*this);
+    }
+
     T operator*() {
       T inner(inner_);
       inner_ = nullptr;

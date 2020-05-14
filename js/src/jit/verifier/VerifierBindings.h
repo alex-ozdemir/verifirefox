@@ -72,7 +72,9 @@ typedef const MirGraph* MirGraphHandle;
 
 extern "C" {
 
-void verifirefox_execute_init(js::jit::verifier::FailCallback failCb);
+// Executor bindings
+
+bool verifirefox_execute_init(js::jit::verifier::FailCallback failCb);
 
 // PhysicalLoc bindings
 

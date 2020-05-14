@@ -13,8 +13,8 @@ namespace js {
 namespace jit {
 namespace verifier {
 
-void ExecuteInit(FailCallback failCb) {
-  verifirefox_execute_init(failCb);
+bool ExecuteInit(FailCallback failCb) {
+  return verifirefox_execute_init(failCb);
 }
 
 }  // namespace verifier

@@ -195,6 +195,9 @@ Please commit or stash these changes before vendoring, or re-run with `--ignore-
             'mach',
         ],
         'BSD-3-Clause': [
+        ],
+        'MIT/Apache-2.0 AND BSD-2-Clause': [
+            'crossbeam-queue',
         ]
     }
 
@@ -229,12 +232,10 @@ Please commit or stash these changes before vendoring, or re-run with `--ignore-
         is deprecated.  Instead, use a license expression with AND and OR
         operators to get more explicit semantics.
         ---
-        But I have no idea how you can meaningfully AND licenses, so
-        we will abort if that is detected. We'll handle `/` and OR as
-        equivalent and approve is any is in our approved list."""
-
-        if re.search(r'\s+AND', license_string):
-            return False
+        We'll handle OR `/` and OR as equivalent and approve if any is in our
+        approved list. But I have no idea how you can meaningfully AND licenses.
+        For now we'll treat those cases as a single, combined licensed which
+        must itself be added to the whitelist."""
 
         license_list = re.split(r'\s*/\s*|\s+OR\s+', license_string)
         for license in license_list:
