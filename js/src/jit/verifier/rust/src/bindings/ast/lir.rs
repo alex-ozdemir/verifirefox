@@ -232,6 +232,7 @@ basic_operation!(ArrayLength, verifirefox_ast_lir_operation_new_array_length);
 basic_operation!(TypedArrayLength, verifirefox_ast_lir_operation_new_typed_array_length);
 basic_operation!(InitializedLength, verifirefox_ast_lir_operation_new_initialized_length);
 basic_operation!(SetInitializedLength, verifirefox_ast_lir_operation_new_set_initialized_length);
+basic_operation!(TypedArrayElements, verifirefox_ast_lir_operation_new_typed_array_elements);
 
 #[no_mangle]
 pub unsafe extern "C" fn verifirefox_ast_lir_operation_new_move_group(

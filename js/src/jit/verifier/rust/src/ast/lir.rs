@@ -263,6 +263,7 @@ pub enum LirOperation {
     TypedArrayLength,
     InitializedLength,
     SetInitializedLength,
+    TypedArrayElements,
     Other(String),
 }
 
@@ -344,6 +345,7 @@ pub(crate) mod typed_ops {
         LoadTypedArrayElementHoleBigInt(object, index),
         ArrayLength(array),
         TypedArrayLength(obj),
+        TypedArrayElements(obj),
         InitializedLength(array),
         SetInitializedLength(array, index),
     ];

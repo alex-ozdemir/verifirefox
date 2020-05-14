@@ -1,13 +1,14 @@
 use super::base::Pass;
 use crate::{
     ast::lir::{
-        typed_ops::{self}, LirAllocation, LirNode, LirUseInfo},
+        typed_ops::{self}, LirAllocation, LirOperation, LirNode, LirUseInfo},
     LirGraph,
 };
 use std::iter::successors;
 use crate::match_op;
 use std::sync::Arc;
 use anyhow::Error;
+use std::collections::{HashSet, VecDeque};
 
 mod reporting;
 pub use reporting::*;
@@ -72,7 +73,7 @@ impl Pass for SpectrePass {
             )?;
 
             // 3. Is the length derived from the same array as the access?
-            if !same_array(length_from_array.array(), access.array()) {
+            if !length_matches_array_access(&self.graph, length_from_array, access) {
                 Err(SpectrePassError::LengthDerivedFromDifferentArray {
                     access: access.node().into(),
                     spectre: smi.node().into(),
@@ -100,7 +101,7 @@ impl Pass for SpectrePass {
 
 /// Finds any mutation of the array after the length is taken and before the array is accessed
 fn intermediary_mutation<'a>(graph: &'a LirGraph, access_node: &'a dyn ArrayAccess, length_node: &'a dyn ArrayLengthAccess) -> Option<&'a LirNode> {
-    predecessors_in_block(graph, access_node.node()).take_while(|node| node.index() != length_node.node().index()).find(|node| mutates_array(node, access_node.array()))
+    predecessors(graph, access_node.node()).take_while(|node| node.index() != length_node.node().index()).find(|node| mutates_array(node, access_node.array()))
 }
 
 fn mutates_array(node: &LirNode, array: &LirAllocation) -> bool {
@@ -129,29 +130,58 @@ fn same_array(left: &LirAllocation, right: &LirAllocation) -> bool {
 }
 
 fn length_def_loc<'a>(graph: &'a LirGraph, smi: &'a typed_ops::SpectreMaskIndex) -> Option<&'a LirNode> {
-    def_location(graph, smi.node(), smi.length().use_info()?)
+    def_location(graph, smi.node(), smi.length())
 }
 
 fn spectre_for_access<'a>(graph: &'a LirGraph, access: &'a dyn ArrayAccess) -> Option<&'a typed_ops::SpectreMaskIndex> {
     let masked_idx = access.index();
-    let masked_idx_def = def_location(graph, access.node(), masked_idx.use_info()?)?;
+    let masked_idx_def = def_location(graph, access.node(), masked_idx)?;
     typed_ops::SpectreMaskIndex::from_node(masked_idx_def)
 }
 
 
-fn predecessors_in_block<'a>(graph: &'a LirGraph, node: &'a LirNode) -> impl Iterator<Item=&'a LirNode> {
+fn predecessors<'a>(graph: &'a LirGraph, node: &'a LirNode) -> impl Iterator<Item=&'a LirNode> {
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
+
     successors(Some(node), move |node| {
-        match &node.predecessors() {
-            [idx] => idx.get(graph),
-            _ => None
+        visited.insert(node.index());
+        let new_preds = node.predecessors().into_iter().filter(|idx| !visited.contains(idx));
+
+        for pred in new_preds{
+            queue.push_back(*pred);
         }
+        
+        queue.pop_front().map(|idx| &graph[idx])
     })
 }
 
-fn def_location<'a>(graph: &'a LirGraph, node: &'a LirNode, lir_use: &'a LirUseInfo) -> Option<&'a LirNode> {
-    predecessors_in_block(graph, node).find(|pred| {
+// Accounts for TypedArray which contains an elements array
+fn length_matches_array_access<'a>(graph: &'a LirGraph, length: &'a dyn ArrayLengthAccess, access: &'a dyn ArrayAccess) -> bool {
+    // TypedArrayLength operates on a TypedArray object while accesses are
+    // performed through an elements object extracted by TypedArrayElements, so
+    // if we're dealing with a typed array, we need to match the elements back
+    // to the object
+    if *length.node().operation() == LirOperation::TypedArrayLength {
+        let array_def = match def_location(graph, access.node(), access.array()) {
+            Some(it) => it,
+            None => return false,
+        };
+        if let Some(typed_array_elem) = typed_ops::TypedArrayElements::from_node(array_def) {
+            same_array(typed_array_elem.obj(), length.array())
+        } else {
+            false
+        }
+    } else {
+        same_array(length.array(),access.array())
+    }
+}
+
+fn def_location<'a>(graph: &'a LirGraph, node: &'a LirNode, alloc: &'a LirAllocation) -> Option<&'a LirNode> {
+    let use_info = alloc.use_info()?;
+    predecessors(graph, node).find(|pred| {
         pred.defs().iter().filter_map(|id| id.as_ref()).any(|def| 
-            def.virtual_reg() == lir_use.virtual_reg()
+            def.virtual_reg() == use_info.virtual_reg()
         )
     })
 }

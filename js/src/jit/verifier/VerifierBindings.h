@@ -177,6 +177,7 @@ op(array_length);
 op(typed_array_length);
 op(initialized_length);
 op(set_initialized_length);
+op(typed_array_elements);
 // js::jit::verifier::LirOperation*
 // verifirefox_ast_lir_operation_new_call_set_element();
 

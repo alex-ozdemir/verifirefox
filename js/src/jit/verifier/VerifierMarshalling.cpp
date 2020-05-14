@@ -271,6 +271,7 @@ verifier::LirNode* MarshallLirNode(const LNode& node,
     OP_CASE(TypedArrayLength, verifirefox_ast_lir_operation_new_typed_array_length)
     OP_CASE(InitializedLength, verifirefox_ast_lir_operation_new_initialized_length);
     OP_CASE(SetInitializedLength, verifirefox_ast_lir_operation_new_set_initialized_length);
+    OP_CASE(TypedArrayElements, verifirefox_ast_lir_operation_new_typed_array_elements);
     #undef OP_CASE
     case LNode::Opcode::MoveGroup: {
       const LMoveGroup& moveGroup = *node.toMoveGroup();

@@ -41,8 +41,6 @@ macro_rules! impl_array_accesses {
 impl_array_accesses! [
     StoreElementV(array, index),
     StoreElementT(array, index),
-    FallibleStoreElementT(array, index),
-    FallibleStoreElementV(array, index),
     StoreUnboxedScalar(array, index),
     StoreUnboxedBigInt(array, index),
     LoadElementV(array, index),
@@ -60,6 +58,10 @@ impl_array_accesses! [
     // StoreTypedArrayElementHoleBigInt(array, index),
     // StoreElementHoleV(array, index),
     // StoreElementHoleT(array, index),
+
+    // Fallible stores also implement their spectre mask during lowering
+    // FallibleStoreElementT(array, index),
+    // FallibleStoreElementV(array, index),
 ];
 
 
