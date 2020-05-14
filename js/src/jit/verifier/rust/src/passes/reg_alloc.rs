@@ -6,17 +6,17 @@
 mod ast;
 
 use std::collections::HashMap;
-use std::error;
 use std::sync::Arc;
 
-use anyhow::Error;
-use thiserror::Error;
+use anyhow::{bail, ensure, Context, Error};
 
 use crate::ast::lir::LirGraph;
 
 use crate::passes::base::Pass;
 
-use crate::passes::reg_alloc::ast::{Possibility, RegAllocGraph, RegAllocPredecessors};
+use crate::passes::reg_alloc::ast::{
+    Possibility, RegAllocGraph, RegAllocNode, RegAllocPredecessors,
+};
 
 pub use crate::passes::reg_alloc::ast::{RegAllocNodeIndex, RegAllocState};
 
@@ -47,26 +47,7 @@ impl Pass for RegAllocPass {
     }
 }
 
-#[derive(Clone, Debug, Error)]
-#[error("error at node {node_index}")]
-pub struct RegAllocError<Source>
-where
-    Source: 'static + error::Error,
-{
-    node_index: RegAllocNodeIndex,
-    source: Source,
-}
-
-#[derive(Clone, Debug, Error)]
-#[error("found inconsistency with state {state:?}")]
-pub struct RegAllocFixpointError {
-    state: RegAllocState,
-}
-
-fn find_fixpoint(
-    graph: &mut RegAllocGraph,
-    strict_meet: bool,
-) -> Result<(), RegAllocError<RegAllocFixpointError>> {
+fn find_fixpoint(graph: &mut RegAllocGraph, strict_meet: bool) -> Result<(), Error> {
     /*
     let prefix = format!("{:p}", graph);
     let graph_size = graph.capacity();
@@ -80,19 +61,11 @@ fn find_fixpoint(
         }
     }
 
-    loop {
-        let node_index = match graph.queue_pop() {
-            Some(node_index) => node_index,
-            None => break,
-        };
-
-        /*
-        iterations += 1;
-        if iterations % 100000 == 0 {
-            //eprintln!("{} still going on {} at {}; queue = {} : {:?}", prefix, graph_size, iterations, dirty.len(), dirty);
-        }
-        */
-
+    fn handle_node(
+        graph: &mut RegAllocGraph,
+        node_index: RegAllocNodeIndex,
+        strict_meet: bool,
+    ) -> Result<(), Error> {
         let mut state = meet(graph, &graph.nodes[node_index].predecessors, strict_meet);
 
         let node = &mut graph.nodes[node_index];
@@ -122,36 +95,44 @@ fn find_fixpoint(
                 graph.queue_push(*successor);
             }
         }
+
+        Ok(())
+    }
+
+    loop {
+        let node_index = match graph.queue_pop() {
+            Some(node_index) => node_index,
+            None => break,
+        };
+
+        handle_node(graph, node_index, strict_meet)
+            .with_context(|| format!("Error at node {}", node_index))?;
+
+        /*
+        iterations += 1;
+        if iterations % 100000 == 0 {
+            //eprintln!("{} still going on {} at {}; queue = {} : {:?}", prefix, graph_size, iterations, dirty.len(), dirty);
+        }
+        */
     }
 
     //eprintln!("{} end {} on {}", prefix, iterations, graph_size);
     Ok(())
 }
 
-#[derive(Clone, Debug, Error)]
-#[error("found incomplete fixpoint state {state:?}, graph: {graph:#?}")]
-pub struct RegAllocCompletenessError {
-    state: RegAllocState,
-    graph: RegAllocGraph,
-}
-
-fn check_graph_completeness(
-    graph: &RegAllocGraph,
-) -> Result<(), RegAllocError<RegAllocCompletenessError>> {
-    for (raw_node_index, node) in graph.nodes.iter().enumerate() {
-        if !node.has_complete_state {
-            let state = meet(graph, &node.predecessors, true);
-
-            return Err(RegAllocError {
-                node_index: raw_node_index.into(),
-                source: RegAllocCompletenessError {
-                    state,
-                    graph: graph.clone(),
-                },
-            });
-        }
+fn check_graph_completeness(graph: &RegAllocGraph) -> Result<(), Error> {
+    fn handle_node(graph: &RegAllocGraph, node: &RegAllocNode) -> Result<(), Error> {
+        ensure!(
+            node.has_complete_state,
+            "Found incomplete fixpoint state {:?}",
+            meet(graph, &node.predecessors, true)
+        );
+        Ok(())
     }
 
+    for (raw_node_index, node) in graph.nodes.iter().enumerate() {
+        handle_node(graph, node).with_context(|| format!("Error at node {}", raw_node_index))?;
+    }
     Ok(())
 }
 
