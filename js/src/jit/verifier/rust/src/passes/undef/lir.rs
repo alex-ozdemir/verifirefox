@@ -36,14 +36,14 @@ impl DefUseGraph for lir::LirGraph {
     }
     fn ids(&self) -> HashSet<lir::VirtualReg> {
         self.iter().flat_map(|n| {
-            n.operands
+            n.operands()
                 .iter()
-                .filter_map(|o| o.use_info().map(|i| i.virtual_reg))
+                .filter_map(|o| o.use_info().map(|i| i.virtual_reg()))
                 .chain(
-                    self.defs
+                    n.defs()
                         .iter()
                         .filter_map(|od| {
-                            od.as_ref().map(|d| d.virtual_reg)
+                            od.as_ref().map(|d| d.virtual_reg())
                         }),
                 )
         }).collect()

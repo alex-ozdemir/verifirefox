@@ -13,23 +13,6 @@ namespace js {
 namespace jit {
 namespace verifier {
 
-inline void RunRegAllocPassSync(LIRGraph&& beforeGraph, LIRGraph&& afterGraph) {
-  verifirefox_passes_reg_alloc_sync(*beforeGraph, *afterGraph);
-}
-
-inline void RunSpectrePassSync(LIRGraph&& beforeGraph) {
-  verifirefox_passes_spectre_sync(*beforeGraph);
-}
-
-inline void RunSpectrePassAsync(LIRGraph&& beforeGraph) {
-  verifirefox_passes_spectre_async(*beforeGraph);
-}
-
-inline void RunRegAllocPassAsync(LIRGraph&& beforeGraph,
-                                 LIRGraph&& afterGraph) {
-  verifirefox_passes_reg_alloc_async(*beforeGraph, *afterGraph);
-}
-
 inline void RunLirUndefUsePassSync(LIRGraph&& graph) {
   verifirefox_passes_lir_undef_use_sync(*graph);
 }
@@ -44,6 +27,23 @@ inline void RunMirUndefUsePassSync(MIRGraph&& graph) {
 
 inline void RunMirUndefUsePassAsync(MIRGraph&& graph) {
   verifirefox_passes_mir_undef_use_async(*graph);
+}
+
+inline void RunRegAllocPassSync(LIRGraph&& beforeGraph, LIRGraph&& afterGraph) {
+  verifirefox_passes_reg_alloc_sync(*beforeGraph, *afterGraph);
+}
+
+inline void RunRegAllocPassAsync(LIRGraph&& beforeGraph,
+                                 LIRGraph&& afterGraph) {
+  verifirefox_passes_reg_alloc_async(*beforeGraph, *afterGraph);
+}
+
+inline void RunSpectrePassSync(LIRGraph&& beforeGraph) {
+  verifirefox_passes_spectre_sync(*beforeGraph);
+}
+
+inline void RunSpectrePassAsync(LIRGraph&& beforeGraph) {
+  verifirefox_passes_spectre_async(*beforeGraph);
 }
 
 }  // namespace verifier

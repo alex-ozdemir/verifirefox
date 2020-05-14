@@ -1082,6 +1082,7 @@ bool OptimizeMIR(MIRGenerator* mir) {
 
 #ifdef JS_VERIFIER
   verifier::MIRGraph beforeGraph = verifier::MarshallMirGraph(graph);
+
   verifier::RunMirUndefUsePassSync(std::move(beforeGraph));
 #endif
 
@@ -1561,6 +1562,7 @@ LIRGraph* GenerateLIR(MIRGenerator* mir) {
 
 #ifdef JS_VERIFIER
   verifier::LIRGraph beforeGraph = verifier::MarshallLirGraph(*lir);
+
   verifier::RunLirUndefUsePassSync(verifier::LIRGraph(beforeGraph));
 #endif
 
