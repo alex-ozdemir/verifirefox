@@ -8,7 +8,8 @@ use std::os::raw::c_char;
 use crate::ast::lir::{
     LirAllocation, LirAnyUsePolicy, LirDefinition, LirDefinitionPolicy, LirDynamicAllocation,
     LirFixedDefinitionPolicy, LirMove, LirMoveGroup, LirNode, LirNodeIndex, LirOperation,
-    LirReuseInputDefinitionPolicy, LirStaticAllocation, LirUseInfo, LirUsePolicy, PhysicalReg,
+    LirReuseInputDefinitionPolicy, LirSnapshot, LirStaticAllocation, LirUseInfo, LirUsePolicy,
+    PhysicalReg,
 };
 
 use crate::bindings::handle::Handle;
@@ -98,30 +99,40 @@ pub unsafe extern "C" fn verifirefox_ast_lir_graph_drop_handle(graph_handle: Han
 
 #[no_mangle]
 pub unsafe extern "C" fn verifirefox_ast_lir_node_new(
+    id: u32,
     operation_ptr: *mut c_void,
     operand_capacity: usize,
     def_capacity: usize,
     temp_capacity: usize,
     predecessor_capacity: usize,
     successor_capacity: usize,
+    snapshot_ptr: *mut c_void,
     is_at_block_start: bool,
-    id: u32,
 ) -> *mut c_void {
     let operation = if operation_ptr.is_null() {
         LirOperation::default()
     } else {
         *(Box::<LirOperation>::from_raw(operation_ptr as *mut _))
     };
+
+    let snapshot = if snapshot_ptr.is_null() {
+        None
+    } else {
+        Some(*(Box::<LirSnapshot>::from_raw(snapshot_ptr as *mut _)))
+    };
+
     let node = LirNode::new(
+        LirNodeId::from(id).into(),
         operation,
         operand_capacity,
         def_capacity,
         temp_capacity,
         predecessor_capacity,
         successor_capacity,
+        snapshot,
         is_at_block_start,
-        LirNodeId::from(id).into(),
     );
+
     Box::into_raw(Box::new(node)) as *mut _
 }
 
@@ -374,4 +385,25 @@ pub unsafe extern "C" fn verifirefox_ast_lir_use_info_new_with_reg_policy(
     let use_policy = LirUsePolicy::Reg;
     let use_info = LirUseInfo::new(virtual_reg, is_used_at_start, use_policy);
     Box::into_raw(Box::new(use_info)) as *mut _
+}
+
+// LirSnapshot bindings
+
+#[no_mangle]
+pub unsafe extern "C" fn verifirefox_ast_lir_snapshot_new(
+    entry_capacity: usize,
+    stack_slot_count: usize,
+) -> *mut c_void {
+    let snapshot = LirSnapshot::new(entry_capacity, stack_slot_count);
+    Box::into_raw(Box::new(snapshot)) as *mut _
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn verifirefox_ast_lir_snapshot_push_entry(
+    snapshot_ptr: *mut c_void,
+    entry_ptr: *mut c_void,
+) {
+    let snapshot = &mut *(snapshot_ptr as *mut LirSnapshot);
+    let entry = *(Box::<LirAllocation>::from_raw(entry_ptr as *mut _));
+    snapshot.push_entry(entry);
 }

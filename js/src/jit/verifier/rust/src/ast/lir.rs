@@ -1,4 +1,6 @@
-use std::collections::HashSet;
+// TODO: Integrity-check that the LirGraph is completely filled in.
+// TODO: Integrity-check that all indices supplied by the C++ side are valid.
+
 use std::fmt;
 
 use typed_index_derive::TypedIndex;
@@ -126,37 +128,44 @@ pub type LirGraph = Box<[LirNode]>;
 
 #[derive(Clone, Debug, Default)]
 pub struct LirNode {
+    index: LirNodeIndex,
     operation: LirOperation,
     operands: Vec<LirAllocation>,
     defs: Vec<Option<LirDefinition>>,
     temps: Vec<Option<LirDefinition>>,
     predecessors: Vec<LirNodeIndex>,
     successors: Vec<LirNodeIndex>,
+    snapshot: Option<LirSnapshot>,
     is_at_block_start: bool,
-    index: LirNodeIndex,
 }
 
 impl LirNode {
     pub fn new(
+        index: LirNodeIndex,
         operation: LirOperation,
         operand_capacity: usize,
         def_capacity: usize,
         temp_capacity: usize,
         predecessor_capacity: usize,
         successor_capacity: usize,
+        snapshot: Option<LirSnapshot>,
         is_at_block_start: bool,
-        index: LirNodeIndex,
     ) -> Self {
         LirNode {
+            index,
             operation,
             operands: Vec::with_capacity(operand_capacity),
             defs: Vec::with_capacity(def_capacity),
             temps: Vec::with_capacity(temp_capacity),
             predecessors: Vec::with_capacity(predecessor_capacity),
             successors: Vec::with_capacity(successor_capacity),
+            snapshot,
             is_at_block_start,
-            index,
         }
+    }
+
+    pub fn index(&self) -> LirNodeIndex {
+        self.index
     }
 
     pub fn operation(&self) -> &LirOperation {
@@ -207,8 +216,8 @@ impl LirNode {
         self.successors.push(successor_node_id.into());
     }
 
-    pub fn index(&self) -> LirNodeIndex {
-        self.index
+    pub fn snapshot(&self) -> Option<&LirSnapshot> {
+        self.snapshot.as_ref()
     }
 
     pub fn is_at_block_start(&self) -> bool {
@@ -217,18 +226,6 @@ impl LirNode {
 
     pub fn set_is_at_block_start(&mut self, value: bool) {
         self.is_at_block_start = value;
-    }
-
-    pub fn regs(&self) -> HashSet<VirtualReg> {
-        self.operands
-            .iter()
-            .filter_map(|o| o.use_info().map(|i| i.virtual_reg))
-            .chain(
-                self.defs
-                    .iter()
-                    .filter_map(|od| od.as_ref().map(|d| d.virtual_reg)),
-            )
-            .collect()
     }
 }
 
@@ -611,5 +608,32 @@ impl LirAnyUsePolicy {
 
     pub fn is_recovered_input(&self) -> bool {
         self.is_recovered_input
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct LirSnapshot {
+    entries: Vec<LirAllocation>,
+    stack_slot_count: usize,
+}
+
+impl LirSnapshot {
+    pub fn new(entry_capacity: usize, stack_slot_count: usize) -> Self {
+        LirSnapshot {
+            entries: Vec::with_capacity(entry_capacity),
+            stack_slot_count,
+        }
+    }
+
+    pub fn entries(&self) -> &[LirAllocation] {
+        &self.entries
+    }
+
+    pub fn push_entry(&mut self, entry: LirAllocation) {
+        self.entries.push(entry);
+    }
+
+    pub fn stack_slot_count(&self) -> usize {
+        self.stack_slot_count
     }
 }

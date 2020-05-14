@@ -1,5 +1,5 @@
 /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * vim: set ts=8 sts=2 et sw=2 tw=80:
+* vim: set ts=8 sts=2 et sw=2 tw=80:
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -196,6 +196,23 @@ verifier::LirDefinition* MarshallLirDefinition(const LDefinition& definition) {
   }
 }
 
+verifier::LirSnapshot* MarshallLirSnapshot(const LSnapshot& snapshot) {
+  const size_t numEntries = snapshot.numEntries();
+
+  const size_t stackSlotCount = snapshot.mir()->numAllocatedOperands();
+
+  verifier::LirSnapshot* outSnapshot =
+      verifirefox_ast_lir_snapshot_new(numEntries, stackSlotCount);
+
+  for (size_t entryIndex = 0; entryIndex < numEntries; ++entryIndex) {
+    const LAllocation& entry = *snapshot.getEntry(entryIndex);
+    verifier::LirAllocation* const outEntry = MarshallLirAllocation(entry);
+    verifirefox_ast_lir_snapshot_push_entry(outSnapshot, outEntry);
+  }
+
+  return outSnapshot;
+}
+
 verifier::LirMove* MarshallLirMove(const LMove& move) {
   verifier::LirAllocation* const outFrom = MarshallLirAllocation(move.from());
   verifier::LirAllocation* const outTo = MarshallLirAllocation(move.to());
@@ -290,9 +307,18 @@ verifier::LirNode* MarshallLirNode(const LNode& node,
           ? 1
           : node.block()->mir()->numSuccessors();
 
+  verifier::LirSnapshot* const outSnapshot =
+      node.isPhi()
+          ? nullptr
+          : (node.toInstruction()->snapshot()
+              ? MarshallLirSnapshot(*node.toInstruction()->snapshot())
+              : nullptr);
+
+  const bool isAtBlockStart = prevNode == nullptr;
+
   verifier::LirNode* const outNode = verifirefox_ast_lir_node_new(
-      outOperation, numOperands, numDefs, numTemps, numPredecessors,
-      numSuccessors, prevNode == nullptr, node.id());
+      node.id(), outOperation, numOperands, numDefs, numTemps, numPredecessors,
+      numSuccessors, outSnapshot, isAtBlockStart);
 
   for (size_t operandIndex = 0; operandIndex < numOperands; operandIndex++) {
     const LAllocation& operand =

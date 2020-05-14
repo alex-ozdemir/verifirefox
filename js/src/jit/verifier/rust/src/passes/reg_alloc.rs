@@ -1,7 +1,5 @@
 // TODO: Verify allocation policies beyond internal consistency.
 // TODO: Verify allocation used-at-start property.
-// TODO: Verify allocation recovered-input property.
-// TODO: Verify definition must-reuse-input property.
 // TODO: Verify stack integrity?
 // TODO: Account for inserted nodes in successors equivalence check.
 
@@ -99,20 +97,23 @@ fn find_fixpoint(
 
         let node = &mut graph.nodes[node_index];
 
-        node.has_complete_state = match node.operation.judge(&state) {
+        node.has_complete_state = match node.operation.pre_judge(&state) {
             Possibility::Known(_) => true,
             Possibility::Unknown => false,
             Possibility::Invalid => {
-                return Err(RegAllocError {
-                    node_index,
-                    source: RegAllocFixpointError {
-                        state: state.clone(),
-                    },
-                });
+                bail!("Found inconsistency with pre-transfer state {:?}", state);
             }
         };
 
         node.operation.transfer(&mut state);
+
+        node.has_complete_state = match node.operation.post_judge(&state) {
+            Possibility::Known(_) => true,
+            Possibility::Unknown => false,
+            Possibility::Invalid => {
+                bail!("Found inconsistency with post-transfer state {:?}", state);
+            }
+        } && node.has_complete_state;
 
         if node.state.as_ref() != Some(&state) {
             node.state = Some(state);

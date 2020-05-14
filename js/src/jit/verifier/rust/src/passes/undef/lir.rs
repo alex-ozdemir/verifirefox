@@ -35,7 +35,18 @@ impl DefUseGraph for lir::LirGraph {
         (0..self.len()).map(lir::LirNodeIndex).collect()
     }
     fn ids(&self) -> HashSet<lir::VirtualReg> {
-        self.iter().flat_map(|n| n.regs()).collect()
+        self.iter().flat_map(|n| {
+            n.operands
+                .iter()
+                .filter_map(|o| o.use_info().map(|i| i.virtual_reg))
+                .chain(
+                    self.defs
+                        .iter()
+                        .filter_map(|od| {
+                            od.as_ref().map(|d| d.virtual_reg)
+                        }),
+                )
+        }).collect()
     }
     fn is_phi(&self, n: Self::Node) -> bool {
         match self[n].operation() {

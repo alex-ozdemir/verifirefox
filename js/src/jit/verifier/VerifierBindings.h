@@ -51,6 +51,7 @@ struct LirMove;
 struct LirDefinition;
 struct LirAllocation;
 struct LirUseInfo;
+struct LirSnapshot;
 
 typedef const LirGraph* LirGraphHandle;
 
@@ -111,9 +112,10 @@ void verifirefox_ast_lir_graph_drop_handle(
 // LirNode bindings
 
 js::jit::verifier::LirNode* verifirefox_ast_lir_node_new(
-    js::jit::verifier::LirOperation* operation, size_t operandCapacity,
-    size_t defCapacity, size_t tempCapacity, size_t predecessorCapacity,
-    size_t successorCapacity, bool isAtBlockStart, uint32_t id);
+    uint32_t id, js::jit::verifier::LirOperation* operation,
+    size_t operandCapacity, size_t defCapacity, size_t tempCapacity,
+    size_t predecessorCapacity, size_t successorCapacity,
+    js::jit::verifier::LirSnapshot* snapshot, bool isAtBlockStart);
 
 void verifirefox_ast_lir_node_push_operand(
     js::jit::verifier::LirNode* node,
@@ -250,7 +252,17 @@ js::jit::verifier::LirUseInfo* verifirefox_ast_lir_use_info_new_with_reg_policy(
     js::jit::verifier::VirtualReg virtualReg,
     bool isUsedAtStart);
 
+// LirSnapshot bindings
+
+js::jit::verifier::LirSnapshot* verifirefox_ast_lir_snapshot_new(
+    size_t entryCapacity, size_t stackSlotCount);
+
+void verifirefox_ast_lir_snapshot_push_entry(
+    js::jit::verifier::LirSnapshot* snapshot,
+    js::jit::verifier::LirAllocation* entry);
+
 // MirOperation bindings
+
 js::jit::verifier::MirOperation* verifirefox_ast_mir_operation_new_other();
 
 // MirGraph bindings
@@ -315,7 +327,6 @@ void verifirefox_ast_mir_basic_block_push_predecessor(
 void verifirefox_ast_mir_basic_block_push_successor(
     js::jit::verifier::MirBasicBlock* bb_ptr,
     js::jit::verifier::MirBasicBlockIndex successor_idx);
-
 
 // RegAllocPass bindings
 
