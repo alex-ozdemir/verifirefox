@@ -325,7 +325,8 @@ pub enum RegAllocOperation {
 
 impl RegAllocOperation {
     fn from_lir(maybe_before_node: Option<&LirNode>, after_node: &LirNode) -> Result<Self, Error> {
-        match after_node.operation() {
+        let after_operation = after_node.operation();
+        match after_operation {
             LirOperation::MoveGroup(move_group) => {
                 ensure!(
                     maybe_before_node.is_none(),
@@ -356,12 +357,11 @@ impl RegAllocOperation {
                     anyhow!("Found Other node not present before register allocation")
                 })?;
 
-                match before_node.operation() {
-                    LirOperation::Other(..) => (),
-                    operation => bail!(
+                if before_node.operation() != after_operation {
+                    bail!(
                         "Other node was a different operation before register allocation: {:?}",
-                        operation
-                    ),
+                        after_operation
+                    );
                 }
 
                 let out_instruction = RegAllocInstruction::from_lir(before_node, after_node)?;

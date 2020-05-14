@@ -229,7 +229,7 @@ impl LirNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LirOperation {
     CallSetElement,
     MoveGroup(LirMoveGroup),
@@ -364,7 +364,7 @@ pub(crate) mod typed_ops {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LirMoveGroup {
     moves: Vec<LirMove>,
 }
@@ -385,7 +385,7 @@ impl LirMoveGroup {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LirMove {
     from: LirAllocation,
     to: LirAllocation,
@@ -414,7 +414,7 @@ impl LirMove {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LirDefinition {
     virtual_reg: VirtualReg,
     ty: LirType,
