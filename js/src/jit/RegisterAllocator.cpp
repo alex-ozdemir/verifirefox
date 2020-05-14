@@ -116,7 +116,7 @@ bool AllocationIntegrityState::check(bool populateSafepoints) {
         LDefinition* def = ins->getDef(i);
         MOZ_ASSERT(!def->output()->isUse());
 
-        LDefinition oldDef = instructions[ins->id()].outputs[i];
+        LDefinition oldDef = getInstructionInfo(ins->id()).outputs[i];
         MOZ_ASSERT_IF(
             oldDef.policy() == LDefinition::MUST_REUSE_INPUT,
             *def->output() == *ins->getOperand(oldDef.getReusedInput()));
@@ -126,7 +126,7 @@ bool AllocationIntegrityState::check(bool populateSafepoints) {
         LDefinition* temp = ins->getTemp(i);
         MOZ_ASSERT_IF(!temp->isBogus(), temp->output()->isRegister());
 
-        LDefinition oldTemp = instructions[ins->id()].temps[i];
+        LDefinition oldTemp = getInstructionInfo(ins->id()).temps[i];
         MOZ_ASSERT_IF(
             oldTemp.policy() == LDefinition::MUST_REUSE_INPUT,
             *temp->output() == *ins->getOperand(oldTemp.getReusedInput()));
@@ -149,7 +149,7 @@ bool AllocationIntegrityState::check(bool populateSafepoints) {
     for (LInstructionIterator iter = block->begin(); iter != block->end();
          iter++) {
       LInstruction* ins = *iter;
-      const InstructionInfo& info = instructions[ins->id()];
+      const InstructionInfo& info = getInstructionInfo(ins->id());
 
       LSafepoint* safepoint = ins->safepoint();
       if (safepoint) {
@@ -228,7 +228,7 @@ bool AllocationIntegrityState::checkIntegrity(LBlock* block, LInstruction* ins,
       }
     }
 
-    const InstructionInfo& info = instructions[ins->id()];
+    const InstructionInfo& info = getInstructionInfo(ins->id());
 
     // Make sure the physical location being tracked is not clobbered by
     // another instruction, and that if the originating vreg definition is
@@ -441,7 +441,7 @@ void AllocationIntegrityState::dump() {
     for (LInstructionIterator iter = block->begin(); iter != block->end();
          iter++) {
       LInstruction* ins = *iter;
-      const InstructionInfo& info = instructions[ins->id()];
+      const InstructionInfo& info = getInstructionInfo(ins->id());
 
       CodePosition input(ins->id(), CodePosition::INPUT);
       CodePosition output(ins->id(), CodePosition::OUTPUT);

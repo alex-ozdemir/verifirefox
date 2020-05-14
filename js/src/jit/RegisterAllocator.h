@@ -67,6 +67,12 @@ struct AllocationIntegrityState {
     }
   };
   Vector<InstructionInfo, 0, SystemAllocPolicy> instructions;
+  const InstructionInfo& getInstructionInfo(uint32_t id) const {
+    // If the instruction was added during register allocation (signified by an
+    // id outside what was recorded beforehand), return the default instruction
+    // info at index 0.
+    return instructions[id >= instructions.length() ? 0 : id];
+  }
 
   struct BlockInfo {
     Vector<InstructionInfo, 5, SystemAllocPolicy> phis;
