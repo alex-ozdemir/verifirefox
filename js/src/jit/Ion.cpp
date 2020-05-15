@@ -1657,6 +1657,7 @@ CodeGenerator* CompileBackEnd(MIRGenerator* mir) {
   }
 
 #ifdef JS_VERIFIER
+  MIRGraph& graph = mir->graph();
   verifier::MIRGraph beforeGraph = verifier::MarshallMirGraph(graph);
   verifier::RunMirUndefUsePassSync(std::move(beforeGraph));
 #endif
