@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::iter::once;
 
 use crate::ast::mir;
 use crate::passes::undef::lir::BvIdSet;
@@ -9,79 +10,89 @@ impl DefUseGraph for mir::MirGraph {
     type Node = (u32, bool, u32);
     type Id = mir::MirDefId;
 
-    fn uses(&self, (bb_idx, is_phi, idx): Self::Node) -> Vec<Self::Id> {
-        self[bb_idx as usize]
-            .get_instr(is_phi, idx)
-            .unwrap()
-            .map(|p| p.inputs.iter())
-            .unwrap_or_else(|i| i.inputs.iter())
-            .copied()
-            .collect()
+    fn uses<'a>(
+        &'a self,
+        (bb_idx, is_phi, idx): Self::Node,
+    ) -> Box<dyn Iterator<Item = Self::Id> + 'a> {
+        Box::new(
+            self[bb_idx as usize]
+                .get_instr(is_phi, idx)
+                .unwrap()
+                .map(|p| p.inputs.iter())
+                .unwrap_or_else(|i| i.inputs.iter())
+                .copied(),
+        )
     }
-    fn definitions(&self, (bb_idx, is_phi, idx): Self::Node) -> Vec<Self::Id> {
-        vec![self[bb_idx as usize]
-            .get_instr(is_phi, idx)
-            .unwrap()
-            .map(|p| p.output)
-            .unwrap_or_else(|i| i.output)]
+    fn definitions<'a>(
+        &'a self,
+        (bb_idx, is_phi, idx): Self::Node,
+    ) -> Box<dyn Iterator<Item = Self::Id> + 'a> {
+        Box::new(once(
+            self[bb_idx as usize]
+                .get_instr(is_phi, idx)
+                .unwrap()
+                .map(|p| p.output)
+                .unwrap_or_else(|i| i.output),
+        ))
     }
-    fn predecessors(&self, (bb_idx, is_phi, idx): Self::Node) -> Vec<Self::Node> {
+    fn predecessors<'a>(
+        &'a self,
+        (bb_idx, is_phi, idx): Self::Node,
+    ) -> Box<dyn Iterator<Item = Self::Node> + 'a> {
         let block = &self[bb_idx as usize];
         if idx == 0 && (is_phi || block.phis.len() == 0) {
-            block
-                .predecessors
-                .iter()
-                .cloned()
-                .map(|bb_idx_p| {
-                    let pred = &self[bb_idx_p];
-                    if pred.instructions.len() > 0 {
-                        (bb_idx_p.0 as u32, false, pred.instructions.len() as u32 - 1)
-                    } else {
-                        assert!(pred.phis.len() > 0);
-                        (bb_idx_p.0 as u32, true, pred.phis.len() as u32 - 1)
-                    }
-                })
-                .collect()
-        } else if is_phi {
-            vec![(bb_idx, is_phi, idx - 1)]
-        } else if block.phis.len() == 0 {
-            vec![(bb_idx, is_phi, idx - 1)]
+            Box::new(block.predecessors.iter().cloned().map(move |bb_idx_p| {
+                let pred = &self[bb_idx_p];
+                if pred.instructions.len() > 0 {
+                    (bb_idx_p.0 as u32, false, pred.instructions.len() as u32 - 1)
+                } else {
+                    assert!(pred.phis.len() > 0);
+                    (bb_idx_p.0 as u32, true, pred.phis.len() as u32 - 1)
+                }
+            }))
         } else {
-            vec![(bb_idx, true, block.phis.len() as u32 - 1)]
+            Box::new(once(if is_phi {
+                (bb_idx, is_phi, idx - 1)
+            } else if block.phis.len() == 0 {
+                (bb_idx, is_phi, idx - 1)
+            } else {
+                (bb_idx, true, block.phis.len() as u32 - 1)
+            }))
         }
     }
-    fn successors(&self, (bb_idx, is_phi, idx): Self::Node) -> Vec<Self::Node> {
+    fn successors<'a>(
+        &'a self,
+        (bb_idx, is_phi, idx): Self::Node,
+    ) -> Box<dyn Iterator<Item = Self::Node> + 'a> {
         let block = &self[bb_idx as usize];
         if (is_phi && idx + 1 == block.phis.len() as u32 && block.instructions.len() == 0)
             || (!is_phi && idx + 1 == block.instructions.len() as u32)
         {
-            block
-                .successors
-                .iter()
-                .cloned()
-                .map(|bb_idx_p| (bb_idx_p.0 as u32, self[bb_idx_p].phis.len() > 0, 0))
-                .collect()
-        } else if !is_phi {
-            vec![(bb_idx, is_phi, idx + 1)]
-        } else if idx as usize + 1 == block.phis.len() {
-            vec![(bb_idx, false, 0)]
+            Box::new(
+                block
+                    .successors
+                    .iter()
+                    .cloned()
+                    .map(move |bb_idx_p| (bb_idx_p.0 as u32, self[bb_idx_p].phis.len() > 0, 0)),
+            )
         } else {
-            vec![(bb_idx, is_phi, idx + 1)]
+            Box::new(once(if !is_phi {
+                (bb_idx, is_phi, idx + 1)
+            } else if idx as usize + 1 == block.phis.len() {
+                (bb_idx, false, 0)
+            } else {
+                (bb_idx, is_phi, idx + 1)
+            }))
         }
     }
-    fn nodes(&self) -> Vec<Self::Node> {
-        let mut out = Vec::new();
-        for (i, b) in self.iter().enumerate() {
-            for j in 0..(b.phis.len()) {
-                out.push((i as u32, true, j as u32))
-            }
-            for j in 0..(b.instructions.len()) {
-                out.push((i as u32, false, j as u32))
-            }
-        }
-        out
+    fn nodes<'a>(&'a self) -> Box<dyn Iterator<Item = Self::Node> + 'a> {
+        Box::new(self.iter().enumerate().flat_map(|(i, b)| {
+            (0..b.phis.len())
+                .map(move |j| (i as u32, true, j as u32))
+                .chain((0..b.instructions.len()).map(move |j| (i as u32, false, j as u32)))
+        }))
     }
-    fn ids(&self) -> HashSet<mir::MirDefId> {
+    fn ids<'a>(&self) -> Box<dyn Iterator<Item = Self::Id> + 'a> {
         let mut out = HashSet::new();
         for b in self.iter() {
             for p in b.phis.iter() {
@@ -93,7 +104,7 @@ impl DefUseGraph for mir::MirGraph {
                 out.extend(i.inputs.iter());
             }
         }
-        out
+        Box::new(out.into_iter())
     }
     fn is_phi(&self, (_, is_phi, _): Self::Node) -> bool {
         is_phi
@@ -115,18 +126,8 @@ pub type MirUndefUsePass = UndefUsePass<mir::MirGraph, BvIdSet>;
 mod test {
     use super::*;
     use crate::ast::mir::*;
+    use crate::passes::undef::lir::test::assert_undef_err;
     use crate::passes::undef::*;
-
-    fn assert_has_error_str(e: &Error, s: &str) {
-        assert!(format!("{}", e).contains(s), "No '{}' in error '{}'", s, e)
-    }
-
-    fn assert_undef_err(result: &Result<(), Error>) {
-        assert!(result.is_err());
-        if let Err(e) = result.as_ref() {
-            assert_has_error_str(e, "Use of undef")
-        }
-    }
 
     fn link(g: &mut MirGraph, from: usize, to: usize) {
         g[from as usize].push_successor(MirBasicBlockIndex::from(to));

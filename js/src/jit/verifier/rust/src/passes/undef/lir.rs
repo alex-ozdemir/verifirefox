@@ -1,52 +1,54 @@
 use std::collections::HashSet;
-use std::mem::take;
 
 use bit_vec::BitVec;
 
 use crate::ast::lir;
-use crate::passes::undef::{DefUseGraph, Set, UndefUsePass};
-
+use crate::passes::undef::{DefUseGraph, Set, UndefUsePass, HashIdSet};
 
 impl DefUseGraph for lir::LirGraph {
     type Node = lir::LirNodeIndex;
     type Id = lir::VirtualReg;
 
-    fn uses(&self, n: Self::Node) -> Vec<Self::Id> {
-        self[n]
-            .operands()
-            .iter()
-            .filter_map(|a| a.use_info().map(|i| i.virtual_reg()))
-            .collect()
-    }
-    fn definitions(&self, n: Self::Node) -> Vec<Self::Id> {
-        self[n]
-            .defs()
-            .iter()
-            .filter_map(|a| a.as_ref().map(lir::LirDefinition::virtual_reg))
-            .collect()
-    }
-    fn predecessors(&self, n: Self::Node) -> Vec<Self::Node> {
-        self[n].predecessors().to_owned()
-    }
-    fn successors(&self, n: Self::Node) -> Vec<Self::Node> {
-        self[n].successors().to_owned()
-    }
-    fn nodes(&self) -> Vec<Self::Node> {
-        (0..self.len()).map(lir::LirNodeIndex).collect()
-    }
-    fn ids(&self) -> HashSet<lir::VirtualReg> {
-        self.iter().flat_map(|n| {
-            n.operands()
+    fn uses<'a>(&'a self, n: Self::Node) -> Box<dyn Iterator<Item = Self::Id> + 'a> {
+        Box::new(
+            self[n]
+                .operands()
                 .iter()
-                .filter_map(|o| o.use_info().map(|i| i.virtual_reg()))
-                .chain(
-                    n.defs()
-                        .iter()
-                        .filter_map(|od| {
-                            od.as_ref().map(|d| d.virtual_reg())
-                        }),
-                )
-        }).collect()
+                .filter_map(|a| a.use_info().map(|i| i.virtual_reg())),
+        )
+    }
+    fn definitions<'a>(&'a self, n: Self::Node) -> Box<dyn Iterator<Item = Self::Id> + 'a> {
+        Box::new(
+            self[n]
+                .defs()
+                .iter()
+                .filter_map(|a| a.as_ref().map(|i| i.virtual_reg())),
+        )
+    }
+    fn predecessors<'a>(&'a self, n: Self::Node) -> Box<dyn Iterator<Item = Self::Node> + 'a> {
+        Box::new(self[n].predecessors().iter().cloned())
+    }
+    fn successors<'a>(&'a self, n: Self::Node) -> Box<dyn Iterator<Item = Self::Node> + 'a> {
+        Box::new(self[n].successors().iter().cloned())
+    }
+    fn nodes<'a>(&'a self) -> Box<dyn Iterator<Item = Self::Node> + 'a> {
+        Box::new((0..self.len()).map(lir::LirNodeIndex))
+    }
+    fn ids<'a>(&self) -> Box<dyn Iterator<Item = Self::Id> + 'a> {
+        let mut s = HashSet::new();
+        for n in self.iter() {
+            s.extend(
+                n.operands()
+                    .iter()
+                    .filter_map(|o| o.use_info().map(|i| i.virtual_reg()))
+                    .chain(
+                        n.defs()
+                            .iter()
+                            .filter_map(|od| od.as_ref().map(|d| d.virtual_reg())),
+                    ),
+            );
+        }
+        Box::new(s.into_iter())
     }
     fn is_phi(&self, n: Self::Node) -> bool {
         match self[n].operation() {
@@ -60,39 +62,11 @@ impl DefUseGraph for lir::LirGraph {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct HashIdSet(pub HashSet<lir::VirtualReg>);
-
-impl Set<lir::VirtualReg> for HashIdSet {
-    fn union(&mut self, other: &Self) {
-        self.0 = take(&mut self.0).union(&other.0).copied().collect();
-    }
-    fn insersect(&mut self, other: &Self) {
-        self.0 = take(&mut self.0).intersection(&other.0).copied().collect();
-    }
-    fn difference(&mut self, other: &Self) {
-        self.0 = take(&mut self.0).difference(&other.0).copied().collect();
-    }
-    fn add(&mut self, item: lir::VirtualReg) {
-        self.0.insert(item);
-    }
-    fn remove(&mut self, item: &lir::VirtualReg) {
-        self.0.remove(&item);
-    }
-    fn contains(&self, item: &lir::VirtualReg) -> bool {
-        self.0.contains(item)
-    }
-    fn all(items: &HashSet<lir::VirtualReg>) -> Self {
-        HashIdSet(items.clone())
-    }
-    fn none(items: &HashSet<lir::VirtualReg>) -> Self {
-        HashIdSet(HashSet::with_capacity(items.len()))
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BvIdSet(BitVec);
 
-impl Set<lir::VirtualReg> for BvIdSet {
+impl Set for BvIdSet {
+    type T = lir::VirtualReg;
+
     fn union(&mut self, other: &Self) {
         self.0.or(&other.0);
     }
@@ -112,29 +86,36 @@ impl Set<lir::VirtualReg> for BvIdSet {
         self.0.get(*item as usize).unwrap_or(false)
     }
     fn all(items: &HashSet<lir::VirtualReg>) -> Self {
-        BvIdSet(BitVec::from_elem(*items.iter().max().unwrap_or(&0) as usize + 1, true))
+        BvIdSet(BitVec::from_elem(
+            *items.iter().max().unwrap_or(&0) as usize + 1,
+            true,
+        ))
     }
     fn none(items: &HashSet<lir::VirtualReg>) -> Self {
-        BvIdSet(BitVec::from_elem(*items.iter().max().unwrap_or(&0) as usize + 1, false))
+        BvIdSet(BitVec::from_elem(
+            *items.iter().max().unwrap_or(&0) as usize + 1,
+            false,
+        ))
     }
 }
 
 #[allow(dead_code)]
-pub type LirUndefUsePassHashSet = UndefUsePass<lir::LirGraph, HashIdSet>;
+pub type LirUndefUsePassHashSet = UndefUsePass<lir::LirGraph, HashIdSet<lir::VirtualReg>>;
 
 pub type LirUndefUsePass = UndefUsePass<lir::LirGraph, BvIdSet>;
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
     use crate::ast::lir::*;
     use crate::passes::undef::*;
+    use anyhow::Error;
 
     fn assert_has_error_str(e: &Error, s: &str) {
         assert!(format!("{}", e).contains(s), "No '{}' in error '{}'", s, e)
     }
 
-    fn assert_undef_err(result: &Result<(), Error>) {
+    pub fn assert_undef_err(result: &Result<(), Error>) {
         assert!(result.is_err());
         if let Err(e) = result.as_ref() {
             assert_has_error_str(e, "Use of undef")
